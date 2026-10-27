@@ -38,7 +38,7 @@ def whistle(f0,f1,d,g=.15):
 # 0-1.2 music box intro
 for k,m in enumerate([72,76,79,84,79,76,83,79]): add(bell(m,1.0,.14),.15+k*.13,(k%2-.5)*.4)
 # mascot jump 1.2 / land 1.65 / hop
-add(boing(220,900,.42,.28),1.2); add(pop(.3),1.65)
+add(whistle(600,900,.6,.06),1.0); add(pop(.3),1.65)
 add(boing(300,1200,.5,.22),2.0,.3); add(whistle(700,1400,.55,.08),2.0,.3)
 # letter pops: 八 西 ニ ュ ー ス
 for st,m in ((2.0,72),(2.5,76),(3.0,79),(3.125,81),(3.25,84),(3.375,88)):
@@ -67,6 +67,13 @@ for k,m in enumerate([72,76,79,84,88,91]): add(bell(m,1.6,.13),8.0+k*.06,(k%3-1)
 add(bass(36,1.5,.4),8.0)
 for k in range(4): add(shaker(.05),8.5+k*.25,.4)
 add(marimba(84,.6,.2),8.6); add(marimba(91,.8,.18),8.75)   # wink sparkle
+
+def gull(st,g=.16):
+    for k,(d,f0,f1) in enumerate(((.16,1300,1900),(.12,1500,2000),(.22,1700,1100))):
+        x=X(d); f=f0*(f1/f0)**(x/d); ph=2*np.pi*np.cumsum(f)/SR
+        s=(np.sin(ph)+.5*np.sin(2*ph)+.25*np.sin(3*ph))*np.sin(np.pi*x/d)**.6*g
+        add(s,st+[0,.18,.32][k],.2)
+gull(1.15); gull(8.55,.12)
 # iris close
 add(boing(900,200,.45,.2),9.35)
 def verb(x):

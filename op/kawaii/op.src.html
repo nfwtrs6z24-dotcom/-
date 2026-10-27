@@ -30,7 +30,7 @@ button:focus-visible{outline:3px solid var(--mint);outline-offset:2px}
     <button id="replay" class="ghost">最初から</button>
     <span class="tc" id="tc">00:00:00;00</span>
   </div>
-  <p class="spec">10秒・1920×1080・29.97fps。1.2秒でみかんが登場、2.0秒「八」、2.5秒「西」、3.0秒「ニュース」、8.0秒でジャーン。</p>
+  <p class="spec">10秒・1920×1080・29.97fps。1.0秒でカモメが飛んでくる、2.0秒「八」、2.5秒「西」、3.0秒「ニュース」、8.0秒でジャーン。</p>
 </div>
 <audio id="au" preload="auto" src="data:audio/mp4;base64,__AUDIO__"></audio>
 <script>
@@ -175,8 +175,8 @@ function mascotState(t){
   const G1=600,G2=820,G3=850;
   let x=960,y=1400,rot=0,land=[];
   const hop=(tt,per,h)=>{const ph=((tt%per)+per)%per/per;return -h*4*ph*(1-ph)};
-  if(t<1.2){y=1400}
-  else if(t<1.65){const p=seg(t,1.2,1.65);y=lerp(1400,G1,p)-Math.sin(p*Math.PI)*260;}
+  if(t<1.0){x=-300;y=150}
+  else if(t<1.65){const p=eIO(seg(t,1.0,1.65));x=lerp(-300,960,p);y=lerp(150,G1,p)-Math.sin(p*Math.PI)*120;}
   else if(t<2.0){y=G1+hop(t-1.65,.35,40)}
   else if(t<2.6){const p=eIO(seg(t,2.0,2.6));x=lerp(960,1580,p);y=lerp(G1,G2,p)-Math.sin(p*Math.PI)*300;rot=p*Math.PI*2}
   else if(t<7.0){x=1580;y=G2+hop(t-2.6,.5,26)}
@@ -190,37 +190,53 @@ function mascotState(t){
   return {x,y,rot,sx:1+s,sy:1-s,ground};
 }
 function mascot(t){
-  const m=mascotState(t); if(m.y>1300)return m;
+  const m=mascotState(t); if(m.x<-250)return m;
   const R=118;
   // shadow
   const lift=cl((m.ground-m.y)/320);
   c.fillStyle=`rgba(60,80,120,${.22*(1-lift*.7)})`;c.beginPath();c.ellipse(m.x,m.ground+R*.95,R*(1-lift*.4),R*.22*(1-lift*.4),0,0,Math.PI*2);c.fill();
   c.save();c.translate(m.x,m.y+R*.95);c.scale(m.sx,m.sy);c.translate(0,-R*.95);c.rotate(m.rot);
-  // arms
-  const wave=t>4.5&&t<7?Math.sin(t*14)*.5:Math.sin(t*5)*.15;
-  c.strokeStyle=K.brown;c.lineWidth=12;c.lineCap='round';
-  c.beginPath();c.moveTo(-R*.95,R*.15);c.lineTo(-R*1.3,R*.05);c.stroke();
-  c.save();c.translate(R*.92,R*.05);c.rotate(-.9+wave);c.beginPath();c.moveTo(0,0);c.lineTo(R*.42,0);c.stroke();c.restore();
+  // seagull: wings flap while airborne, right wing waves while talking
+  const air=lift>.06;
+  const flap=air?Math.sin(t*34)*.7:.12+Math.sin(t*3)*.05;
+  const waveR=t>4.5&&t<7?Math.sin(t*14)*.6-.5:0;
+  // feet
+  c.fillStyle='#ffa53d';c.strokeStyle='#c96f12';c.lineWidth=4;
+  [-1,1].forEach(sd=>{c.beginPath();c.ellipse(sd*R*.35,R*.95,R*.2,R*.09,0,0,Math.PI*2);c.fill();c.stroke()});
+  // wings (behind body)
+  [[-1,flap],[1,flap+waveR]].forEach(([sd,ang])=>{
+    c.save();c.translate(sd*R*.8,-R*.05);c.rotate(sd*(-.35-ang));
+    c.fillStyle='#b4c2d4';c.strokeStyle='#5a6a86';c.lineWidth=6;
+    c.beginPath();c.ellipse(sd*R*.38,0,R*.5,R*.26,0,0,Math.PI*2);c.fill();c.stroke();
+    c.fillStyle='#4a5568';c.beginPath();c.ellipse(sd*R*.72,0,R*.17,R*.17,0,-Math.PI/2,Math.PI/2,sd<0);c.fill();
+    c.restore();});
   // body
-  const g=c.createRadialGradient(-R*.35,-R*.4,10,0,0,R*1.1);g.addColorStop(0,'#ffc36b');g.addColorStop(.6,K.mikan);g.addColorStop(1,K.mikan2);
-  c.fillStyle=g;c.strokeStyle=K.brown;c.lineWidth=8;
-  c.beginPath();c.ellipse(0,0,R*1.04,R*.96,0,0,Math.PI*2);c.fill();c.stroke();
-  c.fillStyle='rgba(255,255,255,.55)';c.beginPath();c.ellipse(-R*.48,-R*.5,R*.2,R*.12,-.6,0,Math.PI*2);c.fill();
-  c.fillStyle='rgba(200,90,10,.25)';for(let i=0;i<9;i++){c.beginPath();c.arc(Math.cos(i*2.4)*R*.7,Math.sin(i*2.4)*R*.6+R*.15,3,0,Math.PI*2);c.fill()}
-  // leaf + stem
-  c.strokeStyle=K.brown;c.lineWidth=7;c.beginPath();c.moveTo(0,-R*.92);c.lineTo(4,-R*1.12);c.stroke();
-  c.save();c.translate(8,-R*1.08);c.rotate(-.5+Math.sin(t*4)*.15);c.fillStyle=K.leaf;c.strokeStyle='#3d8f48';c.lineWidth=5;
-  c.beginPath();c.ellipse(34,0,38,18,0,0,Math.PI*2);c.fill();c.stroke();c.beginPath();c.moveTo(0,0);c.lineTo(64,0);c.stroke();c.restore();
+  const g=c.createRadialGradient(-R*.35,-R*.45,10,0,0,R*1.15);g.addColorStop(0,'#ffffff');g.addColorStop(.7,'#f3f7fc');g.addColorStop(1,'#d9e3ee');
+  c.fillStyle=g;c.strokeStyle='#5a6a86';c.lineWidth=7;
+  c.beginPath();c.ellipse(0,0,R*.98,R*1.0,0,0,Math.PI*2);c.fill();c.stroke();
+  // head tuft
+  c.strokeStyle='#5a6a86';c.lineWidth=6;c.lineCap='round';
+  c.beginPath();c.moveTo(-6,-R*.98);c.quadraticCurveTo(-4,-R*1.25,18,-R*1.2);c.stroke();
+  c.beginPath();c.moveTo(6,-R*.98);c.quadraticCurveTo(14,-R*1.12,30,-R*1.06);c.stroke();
+  // mikan-coloured bow tie: the station's colour on the mascot
+  c.fillStyle='#ff8a3d';c.strokeStyle='#c96f12';c.lineWidth=4;
+  [-1,1].forEach(sd=>{c.beginPath();c.moveTo(0,R*.62);c.lineTo(sd*R*.3,R*.48);c.lineTo(sd*R*.3,R*.78);c.closePath();c.fill();c.stroke()});
+  c.beginPath();c.arc(0,R*.63,R*.08,0,Math.PI*2);c.fill();c.stroke();
   // face
   const blink=[1.9,4.1,5.9,9.2].some(b=>t>b&&t<b+.12), wink=t>8.6&&t<9.1;
-  c.fillStyle='#3b2a3f';c.strokeStyle='#3b2a3f';c.lineWidth=7;
-  [[-1,blink],[1,blink||wink]].forEach(([sd,closed])=>{const ex=sd*R*.36,ey=-R*.08;
+  c.fillStyle='#2b2f3f';c.strokeStyle='#2b2f3f';c.lineWidth=7;
+  [[-1,blink],[1,blink||wink]].forEach(([sd,closed])=>{const ex=sd*R*.36,ey=-R*.2;
     if(closed){c.beginPath();c.arc(ex,ey+4,16,Math.PI*1.1,Math.PI*1.9);c.stroke()}
-    else{c.beginPath();c.ellipse(ex,ey,14,19,0,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(ex+5,ey-7,6,0,Math.PI*2);c.fill();c.beginPath();c.arc(ex-4,ey+6,3,0,Math.PI*2);c.fill();c.fillStyle='#3b2a3f'}});
-  c.fillStyle=K.blush;c.globalAlpha=.8;c.beginPath();c.ellipse(-R*.6,R*.22,22,13,0,0,Math.PI*2);c.ellipse(R*.6,R*.22,22,13,0,0,Math.PI*2);c.fill();c.globalAlpha=1;
-  const open=t>2&&t<2.6||t>7&&t<8.2;
-  c.fillStyle='#b8323f';c.beginPath();if(open){c.ellipse(0,R*.24,22,26,0,0,Math.PI*2)}else{c.arc(0,R*.15,22,0,Math.PI)}c.fill();
-  c.fillStyle='#ff8fa8';c.beginPath();c.ellipse(0,R*(open?.36:.27),12,7,0,0,Math.PI*2);c.fill();
+    else{c.beginPath();c.ellipse(ex,ey,14,19,0,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(ex+5,ey-7,6,0,Math.PI*2);c.fill();c.beginPath();c.arc(ex-4,ey+6,3,0,Math.PI*2);c.fill();c.fillStyle='#2b2f3f'}});
+  c.fillStyle=K.blush;c.globalAlpha=.8;c.beginPath();c.ellipse(-R*.62,R*.08,22,13,0,0,Math.PI*2);c.ellipse(R*.62,R*.08,22,13,0,0,Math.PI*2);c.fill();c.globalAlpha=1;
+  // beak (opens when calling out)
+  const open=t>1.2&&t<1.6||t>2&&t<2.6||t>7&&t<8.2||t>8.6&&t<8.85;
+  c.fillStyle='#ffc93c';c.strokeStyle='#c98a12';c.lineWidth=5;c.lineJoin='round';
+  const by=R*.02;
+  c.beginPath();c.moveTo(-R*.2,by);c.quadraticCurveTo(0,by-R*.1,R*.2,by);c.lineTo(0,by+R*.2-(open?R*.06:0));c.closePath();c.fill();c.stroke();
+  if(open){c.fillStyle='#b8323f';c.beginPath();c.moveTo(-R*.14,by+R*.12);c.lineTo(R*.14,by+R*.12);c.lineTo(0,by+R*.3);c.closePath();c.fill();
+    c.fillStyle='#ffc93c';c.beginPath();c.moveTo(-R*.15,by+R*.16);c.lineTo(R*.15,by+R*.16);c.lineTo(0,by+R*.32);c.closePath();c.fill();c.stroke()}
+  c.fillStyle='#e8413c';c.beginPath();c.arc(R*.07,by+R*.1-(open?R*.03:0),5,0,Math.PI*2);c.fill();
   c.restore();
   return m;
 }
