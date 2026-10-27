@@ -99,6 +99,39 @@ fin=[note(50),note(57),note(62),note(65),note(69),note(74)]
 add(kick(1.2,0.8),8.0); add(crash(0.7,1.8),8.0,0.2); add(crash(0.5,1.8),8.0,-0.3)
 add(stab(fin,2.0,0.75,0.5,0.7),8.0)
 add(bass(note(26),2.0,0.8),8.0)
+
+# --- extra impact layers
+def sub(g=1.0,d=0.9):
+    n=int(1.6*SR); x=np.arange(n)/SR
+    f=38+30*np.exp(-x/0.08); return np.tanh(np.sin(2*np.pi*np.cumsum(f)/SR)*np.exp(-x/d)*2.2)*g
+def revcym(dur,g=0.5):
+    n=int(dur*SR); nz=rng.standard_normal(n); nz=nz-lp(nz,0.35); x=np.arange(n)/SR
+    return nz*(x/dur)**3*g
+def zap(g=0.35):
+    n=int(0.16*SR); x=np.arange(n)/SR
+    f=2400*np.exp(-x/0.03)+120; sq=np.sign(np.sin(2*np.pi*np.cumsum(f)/SR))
+    sq=np.round(sq*np.exp(-x/0.06)*6)/6
+    return sq*g
+def clap(g=0.5):
+    n=int(0.2*SR); nz=rng.standard_normal(n); nz=nz-lp(nz,0.3); x=np.arange(n)/SR
+    e=np.zeros(n)
+    for o in (0,0.011,0.022): k=int(o*SR); e[k:]+=np.exp(-(x[:n-k])/0.012)
+    e+=np.exp(-x/0.09)*0.6
+    return nz*e*g
+add(revcym(1.0,0.55),1.0); add(revcym(1.0,0.6),7.0)
+for h,g in ((2.0,0.8),(2.5,0.8),(3.0,1.0),(8.0,1.2)): add(sub(g),h)
+for h in (4.0,5.5,6.25,6.5): add(zap(0.3),h,pan=0.5 if h%1 else -0.5)
+for bar in range(4):
+    add(clap(0.35),3.5+bar*1.0,0.15)
+# whoosh into the zoom
+n=int(1.0*SR); x=np.arange(n)/SR; nz=rng.standard_normal(n); w=np.zeros(n); st=0
+for i in range(n):
+    a=0.02+0.4*(x[i])**2; st+=a*(nz[i]-st); w[i]=st
+add(w*x**1.5*0.7,7.0)
+# final brass-ish second stab and a taiko-style low drum
+add(stab([note(50),note(57),note(62),note(66),note(69)],1.5,0.4,0.55,0.5),8.0,0.25)
+for k,tt in enumerate((8.0,8.375,8.5)): add(kick(0.7 if k else 0,0.6),tt)
+
 # simple stereo reverb (multi-tap feedback delays)
 def verb(x):
     y=x.copy()
@@ -112,7 +145,7 @@ L=verb(L); R=verb(R)
 # fade out last 0.6s
 f=np.ones(N); k=int(0.6*SR); f[-k:]=np.linspace(1,0,k)**2
 L*=f; R*=f
-m=max(np.abs(L).max(),np.abs(R).max()); L=np.tanh(L/m*1.3)/np.tanh(1.3)*0.89; R=np.tanh(R/m*1.3)/np.tanh(1.3)*0.89
+m=max(np.abs(L).max(),np.abs(R).max()); L=np.tanh(L/m*1.8)/np.tanh(1.8)*0.89; R=np.tanh(R/m*1.8)/np.tanh(1.8)*0.89
 out=(np.stack([L,R],1)*32767).astype('<i2')
 w=wave.open(sys.argv[1],'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes(out.tobytes()); w.close()
 print("ok")
