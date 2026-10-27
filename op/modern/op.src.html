@@ -1,0 +1,200 @@
+<title>八西ニュース OP Modern</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a 16:9 monitor on paper, transport row beneath. Deliberately one light look. */
+@font-face{font-family:"Min";font-weight:800;src:url(data:font/woff2;base64,__MIN__) format("woff2")}
+@font-face{font-family:"ZenK";font-weight:500;src:url(data:font/woff2;base64,__ZEN__) format("woff2")}
+@font-face{font-family:"ISerif";font-style:italic;src:url(data:font/woff2;base64,__SERIF__) format("woff2")}
+@font-face{font-family:"GMono";font-weight:500;src:url(data:font/woff2;base64,__MONO__) format("woff2")}
+@font-face{font-family:"Geist";font-weight:600;src:url(data:font/woff2;base64,__GEIST__) format("woff2")}
+:root{
+  --paper:#eceef0; --ink:#15181d; --muted:#6b727c; --line:#cfd4da; --mikan:#ff7a1a;
+  --ui:"ZenK","Hiragino Sans","Noto Sans JP",sans-serif; --mono:"GMono",ui-monospace,monospace;
+  color-scheme:light;
+}
+html,body{background:var(--paper);color:var(--ink)}
+body{font-family:var(--ui);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.screen{width:100%;max-width:100%;aspect-ratio:16/9;background:var(--paper);border:1px solid var(--line);overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px}
+button{font:500 15px var(--ui);color:var(--paper);background:var(--ink);border:0;border-radius:999px;padding:10px 20px;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--ink)}
+button:focus-visible{outline:2px solid var(--mikan);outline-offset:2px}
+.tc{font:500 13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;margin-left:auto;letter-spacing:.04em}
+.spec{font-size:13px;color:var(--muted);line-height:1.7;margin:0}
+</style>
+<div class="wrap">
+  <div class="screen"><canvas id="cv" width="1920" height="1080"></canvas></div>
+  <div class="bar">
+    <button id="play">▶ 再生（音あり）</button>
+    <button id="replay" class="ghost">最初から</button>
+    <span class="tc" id="tc">00:00:00;00</span>
+  </div>
+  <p class="spec">10秒・1920×1080・29.97fps。2.0秒「八」、2.5秒「西」、3.5秒「ニュース」、8.0秒で最後のロゴ。</p>
+</div>
+<audio id="au" preload="auto" src="data:audio/mp4;base64,__AUDIO__"></audio>
+<script>
+const W=1920,H=1080,DUR=10;
+const cv=document.getElementById('cv'),c=cv.getContext('2d');
+const P={paper:'#eceef0',ink:'#15181d',mute:'#7d848e',line:'rgba(21,24,29,.10)',mikan:'#ff7a1a',sea:'#2c8c9e',peach:'#ffb27a'};
+const cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)), lerp=(a,b,x)=>a+(b-a)*x, seg=(t,a,b)=>cl((t-a)/(b-a));
+const ex=x=>x>=1?1:1-Math.pow(2,-10*x);                 // expo out
+const eio=x=>x<.5?16*x**5:1-Math.pow(-2*x+2,5)/2;        // quint in-out
+const hash=n=>{const s=Math.sin(n*127.1)*43758.5453;return s-Math.floor(s)};
+const M=96;
+
+// grain tiles
+const grains=[0,1,2,3].map(k=>{const g=document.createElement('canvas');g.width=g.height=256;const x=g.getContext('2d'),d=x.createImageData(256,256);
+  for(let i=0;i<d.data.length;i+=4){const v=hash(i*.37+k*999)*255;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=255}x.putImageData(d,0,0);return g});
+
+function txt(s,x,y,font,col,align='left',ls=0,base='alphabetic'){
+  c.font=font;c.fillStyle=col;c.textAlign=align;c.textBaseline=base;
+  if('letterSpacing' in c)c.letterSpacing=ls+'px';c.fillText(s,x,y);if('letterSpacing' in c)c.letterSpacing='0px';
+}
+function typed(s,p){return s.slice(0,Math.floor(s.length*cl(p)))}
+
+// --- scene pieces
+function paper(t,fill){c.fillStyle=fill;c.fillRect(0,0,W,H)}
+function grid(t,a,col){
+  if(a<=0)return;c.save();c.strokeStyle=col;c.lineWidth=1;
+  const cols=12,cw=(W-2*M)/cols;
+  for(let i=0;i<=cols;i++){const p=ex(seg(t,.15+Math.abs(i-6)*.04,1.1+Math.abs(i-6)*.04));if(p<=0)continue;
+    const x=M+i*cw,h=(H-2*M)*p;c.globalAlpha=a;c.beginPath();c.moveTo(x,H/2-h/2);c.lineTo(x,H/2+h/2);c.stroke()}
+  c.restore();
+}
+function orb(t,x,y,r,col,a){
+  if(a<=0||r<=0)return;const g=c.createRadialGradient(x,y,0,x,y,r);
+  g.addColorStop(0,col.replace('A',.95*a));g.addColorStop(.45,col.replace('A',.55*a));g.addColorStop(1,col.replace('A',0));
+  c.fillStyle=g;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();
+}
+function sun(t){
+  // the morning sun over Uwa Sea: two soft orbs rising behind the horizon
+  const rise=ex(seg(t,.9,2.6)), out=seg(t,7.0,7.5);
+  const a=rise*(1-out*.0);
+  const x=1330+Math.sin(t*.6)*30, y=lerp(1150,640,rise)+Math.sin(t*.9)*12;
+  orb(t,x-160,y+80,620,'rgba(44,140,158,A)',a*.55);
+  orb(t,x,y,520,'rgba(255,122,26,A)',a);
+  orb(t,x+60,y-60,260,'rgba(255,214,170,A)',a*.8);
+}
+function horizon(t,col,a){
+  const p=eio(seg(t,.6,1.8)); if(p<=0||a<=0)return;
+  c.save();c.globalAlpha=a;c.strokeStyle=col;c.lineWidth=2;c.beginPath();
+  const x0=M,x1=M+(W-2*M)*p,y=780;
+  for(let x=x0;x<=x1;x+=8){const yy=y+Math.sin(x*.012+t*2.2)*6*seg(t,2,3)+Math.sin(x*.031-t*1.4)*3*seg(t,2,3);x===x0?c.moveTo(x,yy):c.lineTo(x,yy)}
+  c.stroke();c.restore();
+}
+function labels(t,col,a){
+  if(a<=0)return;c.save();c.globalAlpha=a;
+  const f='500 22px GMono';
+  txt(typed('HASSEI NEWS — EP. 1027',seg(t,.3,1.1)),M,M+8,f,col,'left',2,'top');
+  txt(typed('33.46°N 132.42°E',seg(t,.5,1.2)),W-M,M+8,f,col,'right',2,'top');
+  txt(typed('YAWATAHAMA / NISHIUWA',seg(t,.7,1.4)),M,H-M-8,f,col,'left',2,'bottom');
+  const fr=Math.floor(t*29.97);
+  if(t>.8)txt(`00:${String(Math.floor(fr/30)).padStart(2,'0')}:${String(fr%30).padStart(2,'0')}  ·  2026.10.27`,W-M,H-M-8,f,col,'right',2,'bottom');
+  // small mikan dot that blinks like a recording light
+  c.fillStyle=P.mikan;c.globalAlpha=a*(Math.floor(t*2)%2?1:.35);c.beginPath();c.arc(W/2,M+20,7,0,Math.PI*2);c.fill();
+  c.restore();
+}
+// mask reveal: text slides up from under a line, with a blur that resolves
+function reveal(s,x,y,font,col,t0,dur,opt={}){
+  const p=seg(opt.t,t0,t0+dur); if(p<=0)return;
+  const e=ex(p), size=opt.size, rise=size*1.05*(1-e);
+  c.save();c.beginPath();c.rect(x-(opt.align==='center'?opt.w/2:0)-40,y-size*1.05,opt.w+80,size*1.35);c.clip();
+  const b=(1-e)*14; if(b>.3)c.filter=`blur(${b.toFixed(1)}px)`;
+  txt(s,x,y+rise,font,col,opt.align||'left',opt.ls||0);
+  c.restore();
+}
+function badge(t,x,y,r,col,a,dot=P.mikan,dotTxt=P.paper){
+  if(a<=0)return;const s='HASSEI NEWS • YAWATAHAMA • IKATA • NISHIUWA • ';
+  c.save();c.globalAlpha=a;c.translate(x,y);c.rotate(t*.5);
+  c.font='500 20px GMono';c.fillStyle=col;c.textAlign='center';c.textBaseline='middle';
+  for(let i=0;i<s.length;i++){c.save();c.rotate(i/s.length*Math.PI*2);c.fillText(s[i],0,-r);c.restore()}
+  c.restore();
+  c.save();c.globalAlpha=a;c.fillStyle=dot;c.beginPath();c.arc(x,y,r*.32,0,Math.PI*2);c.fill();
+  txt('八',x,y+2,'800 44px Min',dotTxt,'center',0,'middle');c.restore();
+}
+function pill(label,x,y,col,bg,a,p){
+  if(a<=0||p<=0)return;c.save();c.globalAlpha=a;c.font='600 24px Geist';
+  if('letterSpacing' in c)c.letterSpacing='3px';const w=c.measureText(label).width+52,h=52;
+  const ww=w*ex(p);c.beginPath();c.roundRect(x,y-h/2,ww,h,h/2);
+  if(bg){c.fillStyle=bg;c.fill()}c.strokeStyle=col;c.lineWidth=2;c.stroke();
+  c.save();c.clip();txt(label,x+26,y+1,'600 24px Geist',bg?P.paper:col,'left',3,'middle');c.restore();c.restore();
+}
+function vertical(s,x,y,size,col,p){
+  for(let i=0;i<s.length;i++){const q=ex(seg(p,i*.05,i*.05+.4));if(q<=0)continue;c.save();c.globalAlpha=q;
+    txt(s[i],x,y+i*size*1.12+(1-q)*20,`500 ${size}px ZenK`,col,'center',0,'top');c.restore()}
+}
+
+// --- shot 1 (0–7.5): editorial layout on paper
+function shot1(t){
+  paper(t,P.paper);
+  grid(t,1,P.line);
+  sun(t);
+  horizon(t,'rgba(21,24,29,.55)',1);
+  // reshuffle at 5.2: the title block slides left & shrinks, vertical line appears
+  const k=eio(seg(t,5.2,6.2));
+  c.save();
+  c.translate(lerp(0,-40,k),lerp(0,-40,k));
+  const s=lerp(1,.86,k);c.translate(150,650);c.scale(s,s);c.translate(-150,-650);
+  reveal('八',150,650,'800 440px Min',P.ink,2.0,.9,{t,size:440,w:440});
+  reveal('西',150+430,650,'800 440px Min',P.ink,2.5,.9,{t,size:440,w:440});
+  reveal('ニュース',1060,560,'500 132px ZenK',P.ink,3.5,.8,{t,size:132,w:600,ls:10});
+  reveal('Yawatahama & Nishiuwa —',1064,650,'italic 58px ISerif',P.ink,3.8,.8,{t,size:58,w:700});
+  pill('LOCAL NEWS',1064,724,P.ink,null,1,seg(t,4.2,4.9));
+  pill('DAILY',1064+262,724,P.ink,P.ink,1,seg(t,4.35,5.0));
+  c.restore();
+  vertical('八幡浜市・伊方町',W-M-40,M+90,40,P.ink,seg(t,5.6,7.0));
+  badge(t,W-M-250,M+170,96,P.ink,ex(seg(t,5.8,6.6)));
+  labels(t,P.ink,1);
+  // thin rule that sweeps under the title at 3.0 (a beat)
+  const r=eio(seg(t,3.0,3.6)),ro=eio(seg(t,3.6,4.2));
+  if(r>0){c.fillStyle=P.mikan;c.fillRect(lerp(150,150,ro)+ (1000*ro),690,1000*(r-ro)+0.01,6)}
+}
+// --- shot 2 (7.5–10): mikan full-bleed lockup
+function shot2(t){
+  paper(t,P.mikan);
+  orb(t,W/2+Math.sin(t)*80,H*.9,900,'rgba(255,190,120,A)',.7);
+  orb(t,W*.15,H*.1,700,'rgba(230,80,0,A)',.5);
+  grid(99,1,'rgba(21,24,29,.10)');
+  const y0=600;
+  reveal('八西',W/2-660,y0,'800 380px Min',P.ink,7.85,.9,{t,size:380,w:780});
+  reveal('ニュース',W/2+150,y0-90,'500 120px ZenK',P.ink,8.05,.8,{t,size:120,w:560,ls:8});
+  reveal('Yawatahama & Nishiuwa',W/2+156,y0-4,'italic 54px ISerif',P.ink,8.25,.8,{t,size:54,w:600});
+  const lp=eio(seg(t,8.1,8.9));
+  c.fillStyle=P.ink;c.fillRect(W/2-lp*780,y0+150,lp*1560,3);
+  c.save();c.globalAlpha=ex(seg(t,8.5,9.2));
+  txt('LOCAL NEWS FROM THE UWA SEA',W/2,y0+210,'600 26px Geist',P.ink,'center',8*(1+.4*(1-ex(seg(t,8.4,9.4)))),'alphabetic');c.restore();
+  badge(t,W-M-150,M+150,84,P.ink,ex(seg(t,8.3,9.0)),P.ink,P.mikan);
+  labels(t,P.ink,1);
+}
+function render(t){
+  c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='source-over';c.filter='none';
+  // gentle camera drift
+  const z=1+.02*Math.sin(t*.4);c.save();c.translate(W/2,H/2);c.scale(z,z);c.translate(-W/2,-H/2);
+  if(t<7.5) shot1(t);
+  // circular mikan wipe from the sun 7.3–7.9
+  const w=eio(seg(t,7.25,7.9));
+  if(t>=7.5){shot2(t)}
+  else if(w>0){
+    c.save();const x=1330,y=640,r=lerp(0,2300,w);
+    c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.clip();shot2(t);c.restore();
+  }
+  c.restore();
+  // grain
+  c.save();c.globalAlpha=.09;c.globalCompositeOperation='overlay';
+  const g=grains[Math.floor(t*29.97)%4];const pat=c.createPattern(g,'repeat');c.fillStyle=pat;c.fillRect(0,0,W,H);c.restore();
+  // in / out
+  const f=Math.max(1-seg(t,0,.4),seg(t,9.5,10));
+  if(f>0){c.fillStyle=`rgba(236,238,240,${f})`;c.fillRect(0,0,W,H)}
+}
+window.__renderAt=render;
+const au=document.getElementById('au'),btn=document.getElementById('play'),tc=document.getElementById('tc');
+const REST=9.3;
+function stamp(t){const f=Math.floor(t*29.97);tc.textContent=`00:00:${String(Math.floor(f/30)).padStart(2,'0')};${String(f%30).padStart(2,'0')}`}
+let raf=0;
+function loop(){const t=Math.min(au.currentTime,DUR);render(t);stamp(t);if(!au.paused&&!au.ended)raf=requestAnimationFrame(loop);else btn.textContent='▶ 再生（音あり）'}
+btn.onclick=()=>{if(au.paused){if(au.ended)au.currentTime=0;au.play().then(()=>{btn.textContent='❚❚ 一時停止';cancelAnimationFrame(raf);loop()}).catch(()=>{})}else au.pause()};
+document.getElementById('replay').onclick=()=>{au.currentTime=0;if(au.paused)btn.click()};
+Promise.all(['800 440px Min','500 132px ZenK','italic 58px ISerif','500 22px GMono','600 24px Geist'].map(f=>document.fonts.load(f))).then(()=>{render(REST);stamp(REST);window.__ready=true});
+</script>
