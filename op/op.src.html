@@ -1,0 +1,308 @@
+<title>八西ニュース OP</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one 16:9 broadcast monitor, transport bar underneath. Single dark look on purpose. */
+@font-face{font-family:"Dela";src:url(data:font/woff2;base64,__DELA__) format("woff2")}
+@font-face{font-family:"ZenK";font-weight:700;src:url(data:font/woff2;base64,__ZEN__) format("woff2")}
+@font-face{font-family:"Osw";font-weight:700;src:url(data:font/woff2;base64,__OSW__) format("woff2")}
+@font-face{font-family:"Mono";font-weight:500;src:url(data:font/woff2;base64,__MONO__) format("woff2")}
+:root{
+  --bg:#050b17; --panel:#0b1730; --line:#1d2c4d; --fg:#e8eefc; --muted:#8a9bc0; --mikan:#ff8a1f;
+  --mono:"Mono",ui-monospace,monospace; --ui:"ZenK","Hiragino Sans","Noto Sans JP",sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--ui);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.screen{position:relative;width:100%;aspect-ratio:16/9;max-width:100%;background:#000;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+button{font:700 15px var(--ui);color:#1a0d00;background:var(--mikan);border:0;border-radius:3px;padding:10px 18px;cursor:pointer}
+button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.tc{font:500 14px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;margin-left:auto}
+.spec{font-size:13px;color:var(--muted);line-height:1.7}
+</style>
+<div class="wrap">
+  <div class="screen"><canvas id="cv" width="1920" height="1080"></canvas></div>
+  <div class="bar">
+    <button id="play">▶ 再生（音あり）</button>
+    <button id="replay" class="ghost">最初から</button>
+    <span class="tc" id="tc">00:00:00;00</span>
+  </div>
+  <p class="spec">10秒・1920×1080・29.97fps。2.0秒「八」、2.5秒「西」、3.0秒「ニュース」、8.0秒で最後のロゴが決まります。</p>
+</div>
+<audio id="au" preload="auto" src="data:audio/mp4;base64,__AUDIO__"></audio>
+<script>
+const W=1920,H=1080,DUR=10;
+const cv=document.getElementById('cv'),mc=cv.getContext('2d');let c=mc;
+const lcv=document.createElement('canvas');lcv.width=W;lcv.height=H;const lc=lcv.getContext('2d');
+const C={navy:'#06142b',deep:'#020812',sea:'#1f5fbf',mikan:'#ff8a1f',yuzu:'#ffc233',ember:'#c2410c',white:'#f6f9ff'};
+const cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const lerp=(a,b,x)=>a+(b-a)*x;
+const seg=(t,a,b)=>cl((t-a)/(b-a));
+const eOut=x=>1-Math.pow(1-x,3);
+const eIO=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const eBack=x=>{const k=1.9;return 1+(k+1)*Math.pow(x-1,3)+k*Math.pow(x-1,2)};
+const hash=n=>{const s=Math.sin(n*127.1)*43758.5453;return s-Math.floor(s)};
+const HITS=[2.0,2.5,3.0,8.0];
+
+const TITLE='八西ニュース', TS=250;
+let glyphs=null;
+function layout(){
+  c.font=`${TS}px Dela`;
+  const ws=[...TITLE].map(ch=>c.measureText(ch).width*0.96);
+  const tot=ws.reduce((a,b)=>a+b,0); let x=-tot/2;
+  glyphs=[...TITLE].map((ch,i)=>{const g={ch,x:x+ws[i]/2,w:ws[i]};x+=ws[i];return g});
+}
+
+function shake(t){
+  let a=0;
+  for(const h of HITS){const d=t-h; if(d>=0&&d<.5){const k=(h===8?26:h===3?18:14)*Math.exp(-d*9);a+=k}}
+  return [Math.sin(t*93)*a, Math.cos(t*71)*a*.7];
+}
+function flash(t){
+  let a=0;
+  for(const h of HITS){const d=t-h; if(d>=0) a=Math.max(a,(h===8?.95:h===3?.55:.4)*Math.exp(-d*(h===8?5:9)))}
+  return a;
+}
+
+function background(t){
+  const g=c.createRadialGradient(W/2,H*.45,50,W/2,H*.5,W*.75);
+  g.addColorStop(0,'#0e2a57');g.addColorStop(.55,C.navy);g.addColorStop(1,C.deep);
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  // perspective sea grid
+  c.save();c.globalAlpha=.22+.1*seg(t,2,3);c.strokeStyle='#3d7be0';c.lineWidth=1.5;
+  const hz=H*.62;
+  for(let i=-24;i<=24;i++){c.beginPath();c.moveTo(W/2+i*18,hz);c.lineTo(W/2+i*220,H);c.stroke()}
+  const sp=(t*(t<7?.9:3.5))%1;
+  for(let k=0;k<14;k++){const z=(k+sp)/14, y=hz+(H-hz)*z*z; c.globalAlpha=(.05+.3*z)*(.7+.3*seg(t,2,3));c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke()}
+  c.restore();
+  // horizon glow
+  const hg=c.createLinearGradient(0,hz-60,0,hz+40);
+  hg.addColorStop(0,'rgba(255,138,31,0)');hg.addColorStop(.6,`rgba(255,138,31,${.18+.12*seg(t,3,3.5)})`);hg.addColorStop(1,'rgba(255,138,31,0)');
+  c.fillStyle=hg;c.fillRect(0,hz-60,W,100);
+}
+
+function waves(t){
+  c.save();c.lineWidth=2;
+  for(let k=0;k<3;k++){
+    c.strokeStyle=k===1?'rgba(255,194,51,.35)':'rgba(180,210,255,.18)';
+    c.beginPath();
+    for(let x=0;x<=W;x+=12){const y=H-110+k*26+Math.sin(x*.006+t*(1.6+k*.4)+k)*14*(1+k*.3)+Math.sin(x*.017-t*2.2)*5; x?c.lineTo(x,y):c.moveTo(x,y)}
+    c.stroke();
+  }
+  c.restore();
+}
+
+function rings(t,cx,cy,amp){
+  if(amp<=0)return;
+  c.save();c.translate(cx,cy);c.globalAlpha=amp;
+  const sp=t<7?1:1+Math.pow(seg(t,7,8),2)*8;
+  const R=[330,410,470,560];
+  c.strokeStyle='rgba(120,170,255,.25)';c.lineWidth=2;
+  c.beginPath();c.arc(0,0,R[0],0,Math.PI*2);c.stroke();
+  // tick ring
+  c.save();c.rotate(t*.12*sp);
+  for(let i=0;i<120;i++){const a=i/120*Math.PI*2,l=i%10?10:26;c.strokeStyle=i%10?'rgba(150,190,255,.35)':'rgba(255,194,51,.8)';c.lineWidth=i%10?2:3;
+    c.beginPath();c.moveTo(Math.cos(a)*R[1],Math.sin(a)*R[1]);c.lineTo(Math.cos(a)*(R[1]+l),Math.sin(a)*(R[1]+l));c.stroke()}
+  c.restore();
+  // orange arcs
+  c.save();c.rotate(-t*.35*sp);c.strokeStyle=C.mikan;c.lineWidth=10;c.lineCap='butt';
+  for(let i=0;i<3;i++){c.beginPath();c.arc(0,0,R[2],i*2.094,i*2.094+.9);c.stroke()}
+  c.restore();
+  c.save();c.rotate(t*.22*sp);c.strokeStyle='rgba(246,249,255,.5)';c.lineWidth=2;c.setLineDash([4,14]);
+  c.beginPath();c.arc(0,0,R[3],0,Math.PI*2);c.stroke();c.restore();
+  c.restore();
+}
+
+function streaks(t,amt){
+  if(amt<=0)return;
+  c.save();c.globalCompositeOperation='lighter';
+  for(let i=0;i<70;i++){
+    const y=hash(i)*H, sp=1800+hash(i+9)*3600, len=200+hash(i+3)*700;
+    const x=((hash(i+5)*W*2+t*sp*(1+amt))%(W+len*2))-len;
+    const g=c.createLinearGradient(x-len,0,x,0);
+    const col=i%5===0?'255,160,60':'150,200,255';
+    g.addColorStop(0,`rgba(${col},0)`);g.addColorStop(1,`rgba(${col},${.55*amt})`);
+    c.fillStyle=g;c.fillRect(x-len,y,len,i%7===0?4:2);
+  }
+  c.restore();
+}
+
+function slashes(t){
+  // diagonal mikan bars: slam across at 3.0, then park behind the logo
+  const p=eOut(seg(t,2.92,3.35));
+  if(p<=0)return;
+  const out=t>7?eIO(seg(t,7,7.6)):0;
+  c.save();c.translate(W/2,H/2);c.rotate(-.2);
+  const bars=[{y:-215,h:34,c:C.yuzu,o:0},{y:150,h:120,c:C.mikan,o:.06},{y:280,h:18,c:C.white,o:.12}];
+  for(const b of bars){
+    const q=eOut(seg(t,2.92+b.o,3.4+b.o));
+    const w=2600*q, x=lerp(-1500,-1300,q)+out*2800;
+    c.globalAlpha=.95*(1-out);c.fillStyle=b.c;c.fillRect(x,b.y,w,b.h);
+  }
+  c.restore();
+}
+
+function drawGlyph(g,size,fill){
+  c.font=`${size}px Dela`;c.textAlign='center';c.textBaseline='middle';
+  // extrude
+  for(let k=14;k>0;k-=2){c.fillStyle=k>8?'#5a1a00':C.ember;c.fillText(g.ch,k*.9,k)}
+  c.fillStyle=fill||C.white;c.fillText(g.ch,0,0);
+}
+
+function title(t,mode){
+  if(!glyphs)layout();
+  const base=mode==='final'?1:1;
+  c.save();
+  glyphs.forEach((g,i)=>{
+    let a=1,s=1,dx=0,dy=0,rot=0;
+    if(i===0){const p=seg(t,1.9,2.08);a=p;s=lerp(3.2,1,eOut(p));}
+    else if(i===1){const p=seg(t,2.4,2.58);a=p;s=lerp(3.2,1,eOut(p));}
+    else{const st=3.0+(i-2)*.07,p=seg(t,st,st+.28);a=p;dy=lerp(-260,0,eBack(p));rot=lerp(-.25,0,eOut(p));}
+    if(a<=0)return;
+    c.save();c.globalAlpha=a;c.translate(g.x+dx,dy);c.rotate(rot);c.scale(s,s);
+    drawGlyph(g,TS);
+    c.restore();
+  });
+  c.restore();
+}
+
+function glint(t,from,to){
+  const p=seg(t,from,to); if(p<=0||p>=1)return;
+  c.save();c.font=`${TS}px Dela`;c.textAlign='center';c.textBaseline='middle';
+  c.globalCompositeOperation='source-atop';
+  const x=lerp(-900,900,eIO(p));
+  const g=c.createLinearGradient(x-120,-200,x+120,200);
+  g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(.5,'rgba(255,240,200,.95)');g.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=g;c.fillRect(-1000,-200,2000,400);
+  c.restore();
+}
+
+function band(t,start){
+  // English band + tagline under the logo
+  const p=eOut(seg(t,start,start+.45)); if(p<=0)return;
+  c.save();
+  const w=1160*p;
+  c.fillStyle=C.mikan;c.fillRect(-w/2,165,w,74);
+  c.fillStyle=C.navy;c.fillRect(-w/2,165,Math.min(w,92),74);
+  c.save();c.beginPath();c.rect(-w/2,165,w,74);c.clip();
+  c.fillStyle='#1a0d00';c.font='700 48px Osw';c.textAlign='center';c.textBaseline='middle';
+  if('letterSpacing' in c) c.letterSpacing=`${lerp(40,14,p)}px`;
+  c.fillText('YAWATAHAMA · NISHIUWA NEWS',46,204);
+  if('letterSpacing' in c) c.letterSpacing='0px';
+  c.fillStyle=C.yuzu;c.beginPath();c.arc(-w/2+46,202,12,0,Math.PI*2);c.fill();
+  c.restore();
+  // tagline type-on
+  const tag='八幡浜市・伊方町の「いま」を、まっすぐ届ける。';
+  const n=Math.floor(tag.length*seg(t,start+.5,start+1.4));
+  c.font='700 40px ZenK';c.fillStyle=C.white;c.textAlign='center';c.textBaseline='middle';
+  c.globalAlpha=.92;c.fillText(tag.slice(0,n),0,-205);
+  c.restore();
+}
+
+function hud(t){
+  const a=seg(t,.2,.7)*(1-seg(t,9.4,9.8));
+  if(a<=0)return;
+  c.save();c.globalAlpha=a;c.strokeStyle='rgba(246,249,255,.7)';c.lineWidth=3;
+  const m=60,L=60;
+  [[m,m,1,1],[W-m,m,-1,1],[m,H-m,1,-1],[W-m,H-m,-1,-1]].forEach(([x,y,sx,sy])=>{c.beginPath();c.moveTo(x,y+L*sy);c.lineTo(x,y);c.lineTo(x+L*sx,y);c.stroke()});
+  c.font='500 26px Mono';c.textBaseline='middle';c.fillStyle='rgba(246,249,255,.85)';
+  c.textAlign='left';
+  if(Math.floor(t*2)%2===0||t>8){c.fillStyle='#ff3b30';c.beginPath();c.arc(m+34,m+44,9,0,Math.PI*2);c.fill()}
+  c.fillStyle='rgba(246,249,255,.85)';c.fillText('LIVE  YAWATAHAMA',m+56,m+45);
+  c.textAlign='right';c.fillText('33.46°N  132.42°E',W-m-30,m+45);
+  const f=Math.floor(t*29.97),ss=Math.floor(f/30),ff=f%30;
+  c.fillText(`00:00:${String(ss).padStart(2,'0')};${String(ff).padStart(2,'0')}`,W-m-30,H-m-40);
+  c.textAlign='left';c.fillText('2026.10.27 TUE',m+30,H-m-40);
+  c.restore();
+}
+
+function ticker(t){
+  const a=seg(t,4,4.4)*(1-seg(t,6.9,7.2));
+  if(a<=0)return;
+  c.save();c.globalAlpha=a;
+  c.fillStyle='rgba(2,8,18,.75)';c.fillRect(0,H-200,W,56);
+  c.fillStyle=C.mikan;c.fillRect(0,H-200,250,56);
+  c.font='30px Dela';c.textBaseline='middle';c.fillStyle='#1a0d00';c.textAlign='center';c.fillText('八西ニュース',125,H-171);
+  c.save();c.beginPath();c.rect(250,H-200,W-250,56);c.clip();
+  c.font='700 30px ZenK';c.fillStyle=C.white;c.textAlign='left';
+  const s='八幡浜市・伊方町の「いま」を、まっすぐ届ける。　　　　';
+  const w=c.measureText(s).width,x=W-(t-4)*520;
+  for(let k=0;k<4;k++)c.fillText(s,x+k*w,H-171);
+  c.restore();c.restore();
+}
+
+function sparks(t){
+  const d=t-8; if(d<0||d>2)return;
+  c.save();c.globalCompositeOperation='lighter';
+  for(let i=0;i<90;i++){
+    const a=hash(i)*Math.PI*2,v=600+hash(i+1)*1600,r=v*(1-Math.exp(-d*2.2))/2.2*1.6;
+    const x=W/2+Math.cos(a)*r,y=H/2+Math.sin(a)*r*.6;
+    c.globalAlpha=cl(1-d/1.4)*(.4+.6*hash(i+2));
+    c.fillStyle=i%3?C.yuzu:C.white;c.fillRect(x,y,3+hash(i+4)*4,3+hash(i+4)*4);
+  }
+  c.restore();
+}
+
+function render(t){
+  c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='source-over';
+  background(t);
+  // intro (0-2): streaks + rings bloom
+  const ringAmp=eOut(seg(t,.3,1.6))*(t>7&&t<8?1-seg(t,7.6,8):1);
+  const [sx,sy]=shake(t);
+  // camera
+  let cam=1;
+  if(t<2) cam=lerp(1.25,1,eOut(seg(t,0,2)));
+  else if(t<7) cam=lerp(1,1.07,seg(t,3,7));
+  else if(t<8) cam=lerp(1.07,2.4,Math.pow(seg(t,7,8),2.4));
+  else cam=lerp(1.12,1,eOut(seg(t,8,8.9)));
+  c.save();c.translate(W/2+sx,H/2+sy);c.scale(cam,cam);c.translate(-W/2,-H/2);
+  rings(t,W/2,H/2,ringAmp);
+  c.restore();
+  streaks(t,t<2.1?seg(t,0,1.9)*(1-seg(t,1.95,2.1)):t>7&&t<8.1?seg(t,7,7.9)*(1-seg(t,7.95,8.1)):0);
+  waves(t);
+  c.save();c.translate(W/2+sx,H/2+sy);c.scale(cam,cam);c.translate(-W/2,-H/2);
+  slashes(t);
+  c.restore();
+  // logo layer, drawn into its own space so glint can clip with source-atop
+  const logoA=t<7?1:t<8?1-seg(t,7.35,7.9):eOut(seg(t,8,8.15));
+  if(t>=1.9&&logoA>0){
+    c.save();c.translate(W/2+sx,H/2-20+sy);
+    let ls=cam;
+    if(t>=8) ls=lerp(1.25,1,eBack(seg(t,8,8.45)));
+    c.scale(ls,ls);c.globalAlpha=logoA;
+    band(t>=8?99:t,3.3);
+    const m=c.getTransform();
+    c=lc;c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-over';c.globalAlpha=1;c.clearRect(0,0,W,H);c.setTransform(m);
+    title(t>=8?99:t);
+    if(t>=5&&t<5.8) glint(t,5,5.8);
+    if(t>=8.25) glint(t,8.25,9.1);
+    c=mc;c.restore();
+    c.save();c.globalAlpha=logoA;c.drawImage(lcv,0,0);c.restore();
+  }
+  sparks(t);
+  ticker(t);
+  hud(t);
+  // flash + vignette + scanlines
+  const fl=flash(t);
+  if(fl>0){c.fillStyle=`rgba(255,248,235,${fl})`;c.fillRect(0,0,W,H)}
+  const vg=c.createRadialGradient(W/2,H/2,H*.45,W/2,H/2,W*.7);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.55)');
+  c.fillStyle=vg;c.fillRect(0,0,W,H);
+  c.fillStyle='rgba(0,0,0,.08)';for(let y=0;y<H;y+=4)c.fillRect(0,y,W,1);
+  // opening fade-in and closing fade-out
+  const fade=Math.max(1-seg(t,0,.35),seg(t,9.55,10));
+  if(fade>0){c.fillStyle=`rgba(0,0,0,${fade})`;c.fillRect(0,0,W,H)}
+}
+
+window.__renderAt=render;
+const au=document.getElementById('au'),btn=document.getElementById('play'),tc=document.getElementById('tc');
+const REST=8.9;
+function stamp(t){const f=Math.floor(t*29.97);tc.textContent=`00:00:${String(Math.floor(f/30)).padStart(2,'0')};${String(f%30).padStart(2,'0')}`}
+let raf=0;
+function loop(){const t=Math.min(au.currentTime,DUR);render(t);stamp(t);if(!au.paused&&!au.ended)raf=requestAnimationFrame(loop);else{btn.textContent='▶ 再生（音あり）'}}
+btn.onclick=()=>{if(au.paused){if(au.ended)au.currentTime=0;au.play().then(()=>{btn.textContent='❚❚ 一時停止';cancelAnimationFrame(raf);loop()}).catch(()=>{})}else{au.pause()}};
+document.getElementById('replay').onclick=()=>{au.currentTime=0;if(au.paused)btn.click();};
+document.fonts.load('250px Dela').then(()=>Promise.all(['700 40px ZenK','700 48px Osw','500 26px Mono'].map(f=>document.fonts.load(f)))).then(()=>{layout();render(REST);stamp(REST);window.__ready=true});
+</script>
