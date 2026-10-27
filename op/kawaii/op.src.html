@@ -213,7 +213,8 @@ function mascot(t){
     c.moveTo(sd*R*1.12,-R*.6);c.lineTo(sd*R*1.22,-R*.28);c.lineTo(sd*R*1.1,-R*.2);c.lineTo(sd*R*1.24,-R*.1);c.lineTo(sd*R*2,0);c.lineTo(sd*R*2,-R*.6);c.closePath();c.fill();c.restore();
     path();c.strokeStyle=OL;c.lineWidth=LW;c.stroke();c.restore();
   }
-  wing(-1,flap);wing(1,flap+waveR);
+  // resting pose follows the logo: left wing raised high, right wing swept down
+  wing(-1,air?flap:.8+Math.sin(t*3)*.06);wing(1,air?flap:-.45+waveR*1.2);
   // head / body
   c.fillStyle='#fff';c.strokeStyle=OL;c.lineWidth=LW;c.beginPath();c.arc(0,0,R,0,Math.PI*2);c.fill();c.stroke();
   // sailor cap, tilted on the right
@@ -225,7 +226,7 @@ function mascot(t){
   cap();c.strokeStyle=OL;c.lineWidth=LW;c.stroke();c.restore();
   // eyes: half-lidded, looking left; closed on blink / wink
   const blink=[1.9,4.1,5.9,9.2].some(b=>t>b&&t<b+.12), wink=t>8.6&&t<9.1;
-  [[-R*.2,-R*.3,blink],[R*.28,-R*.18,blink||wink]].forEach(([ex,ey,closed])=>{
+  [[R*.04,-R*.3,blink],[R*.46,-R*.12,blink||wink]].forEach(([ex,ey,closed])=>{
     c.strokeStyle=OL;c.lineWidth=7;
     if(closed){c.beginPath();c.arc(ex,ey-4,15,Math.PI*.15,Math.PI*.85);c.stroke();return}
     c.fillStyle=OL;c.beginPath();c.ellipse(ex-5,ey+4,17,14,0,0,Math.PI);c.fill();      // pupil under the lid
@@ -239,7 +240,7 @@ function mascot(t){
   const open=t>1.2&&t<1.6||t>2&&t<2.6||t>7&&t<8.2||t>8.6&&t<8.85;
   const bg=c.createLinearGradient(-R*1.1,0,-R*.3,0);bg.addColorStop(0,'#ffe94d');bg.addColorStop(1,'#f5c400');
   const oa=open?R*.12:0;
-  c.save();c.translate(-R*.42,0);c.scale(1.3,1.3);c.translate(R*.42,0);
+  c.save();c.translate(-R*.42,-R*.12);c.rotate(.75);c.scale(1.3,1.3);c.translate(R*.42,R*.12);
   c.fillStyle=bg;c.strokeStyle=OL;c.lineWidth=LW;
   c.beginPath();c.moveTo(-R*.55,-R*.42);c.lineTo(-R*1.12,-R*.02-oa*.4);c.lineTo(-R*.4,R*.06);c.quadraticCurveTo(-R*.28,-R*.2,-R*.55,-R*.42);c.closePath();c.fill();c.stroke();
   c.beginPath();c.moveTo(-R*1.05,R*.04+oa*.4);c.lineTo(-R*.4,R*.1+oa);c.lineTo(-R*.42,R*.22+oa);c.quadraticCurveTo(-R*.75,R*.16+oa,-R*1.05,R*.04+oa*.4);c.closePath();c.fill();c.stroke();
@@ -249,6 +250,15 @@ function mascot(t){
   return m;
 }
 
+function catv(t){
+  const p=seg(t,8.3,8.8); if(p<=0)return;
+  c.save();c.translate(W-250,H-80);c.scale(elastic(p),elastic(p));
+  c.fillStyle='#fff';c.beginPath();c.roundRect(-190,-50,380,100,50);c.fill();
+  c.textBaseline='middle';c.textAlign='left';
+  c.font='56px Pop';c.fillStyle='#141414';c.fillText('八西',-150,2);
+  c.font='600 62px Fred';c.fillStyle='#4aa3c8';c.fillText('CATV',-150+c.measureText('').width+118,4);
+  c.restore();
+}
 function render(t){
   c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='source-over';
   sky(t);clouds(t);sparkles(t);
@@ -263,6 +273,7 @@ function render(t){
   subPill(t);
   mascot(t);
   bubble(t,m.x,m.y);
+  catv(t);
   confetti(t);
   // pastel flash on each pop
   let f=0;for(const l of LET)if(t>=l.t)f=Math.max(f,.25*Math.exp(-(t-l.t)*14));if(t>=8)f=Math.max(f,.6*Math.exp(-(t-8)*7));
