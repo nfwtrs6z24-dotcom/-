@@ -163,7 +163,7 @@ function subPill(t){
 }
 function bubble(t,mx,my){
   const p=seg(t,4.6,5.0)*(1-seg(t,6.6,6.9)); if(p<=0)return;
-  c.save();c.translate(mx+150,my-210);const s=elastic(seg(t,4.6,5.1))*(t>6.6?1-seg(t,6.6,6.9):1);c.scale(s,s);
+  c.save();c.translate(mx+190,my-270);const s=elastic(seg(t,4.6,5.1))*(t>6.6?1-seg(t,6.6,6.9):1);c.scale(s,s);
   c.fillStyle='#fff';c.beginPath();c.roundRect(-130,-55,260,110,55);c.fill();
   c.beginPath();c.moveTo(-70,40);c.lineTo(-130,95);c.lineTo(-30,50);c.fill();
   c.font='700 50px Maru';c.fillStyle=K.pink;c.textAlign='center';c.textBaseline='middle';c.fillText('みてね！',0,2);
@@ -196,47 +196,55 @@ function mascot(t){
   const lift=cl((m.ground-m.y)/320);
   c.fillStyle=`rgba(60,80,120,${.22*(1-lift*.7)})`;c.beginPath();c.ellipse(m.x,m.ground+R*.95,R*(1-lift*.4),R*.22*(1-lift*.4),0,0,Math.PI*2);c.fill();
   c.save();c.translate(m.x,m.y+R*.95);c.scale(m.sx,m.sy);c.translate(0,-R*.95);c.rotate(m.rot);
-  // seagull: wings flap while airborne, right wing waves while talking
-  const air=lift>.06;
-  const flap=air?Math.sin(t*34)*.7:.12+Math.sin(t*3)*.05;
-  const waveR=t>4.5&&t<7?Math.sin(t*14)*.6-.5:0;
+  // HASSEI seagull: thick black line art, sailor cap, big yellow beak facing left, cool half-lidded eyes
+  const OL='#141414', LW=9, air=lift>.06;
+  const flap=air?.35+Math.sin(t*30)*.75:.3+Math.sin(t*3)*.06;
+  const waveR=t>4.5&&t<7?Math.sin(t*14)*.55:0;
+  c.lineJoin='round';c.lineCap='round';
   // feet
-  c.fillStyle='#ffa53d';c.strokeStyle='#c96f12';c.lineWidth=4;
-  [-1,1].forEach(sd=>{c.beginPath();c.ellipse(sd*R*.35,R*.95,R*.2,R*.09,0,0,Math.PI*2);c.fill();c.stroke()});
-  // wings (behind body)
-  [[-1,flap],[1,flap+waveR]].forEach(([sd,ang])=>{
-    c.save();c.translate(sd*R*.8,-R*.05);c.rotate(sd*(-.35-ang));
-    c.fillStyle='#b4c2d4';c.strokeStyle='#5a6a86';c.lineWidth=6;
-    c.beginPath();c.ellipse(sd*R*.38,0,R*.5,R*.26,0,0,Math.PI*2);c.fill();c.stroke();
-    c.fillStyle='#4a5568';c.beginPath();c.ellipse(sd*R*.72,0,R*.17,R*.17,0,-Math.PI/2,Math.PI/2,sd<0);c.fill();
-    c.restore();});
-  // body
-  const g=c.createRadialGradient(-R*.35,-R*.45,10,0,0,R*1.15);g.addColorStop(0,'#ffffff');g.addColorStop(.7,'#f3f7fc');g.addColorStop(1,'#d9e3ee');
-  c.fillStyle=g;c.strokeStyle='#5a6a86';c.lineWidth=7;
-  c.beginPath();c.ellipse(0,0,R*.98,R*1.0,0,0,Math.PI*2);c.fill();c.stroke();
-  // head tuft
-  c.strokeStyle='#5a6a86';c.lineWidth=6;c.lineCap='round';
-  c.beginPath();c.moveTo(-6,-R*.98);c.quadraticCurveTo(-4,-R*1.25,18,-R*1.2);c.stroke();
-  c.beginPath();c.moveTo(6,-R*.98);c.quadraticCurveTo(14,-R*1.12,30,-R*1.06);c.stroke();
-  // mikan-coloured bow tie: the station's colour on the mascot
-  c.fillStyle='#ff8a3d';c.strokeStyle='#c96f12';c.lineWidth=4;
-  [-1,1].forEach(sd=>{c.beginPath();c.moveTo(0,R*.62);c.lineTo(sd*R*.3,R*.48);c.lineTo(sd*R*.3,R*.78);c.closePath();c.fill();c.stroke()});
-  c.beginPath();c.arc(0,R*.63,R*.08,0,Math.PI*2);c.fill();c.stroke();
-  // face
+  [-1,1].forEach(sd=>{c.save();c.translate(sd*R*.38,R*.92);c.fillStyle='#ffd21f';c.strokeStyle=OL;c.lineWidth=6;
+    c.beginPath();c.moveTo(-R*.2,R*.02);c.lineTo(-R*.24,R*.14);c.lineTo(-R*.08,R*.1);c.lineTo(0,R*.18);c.lineTo(R*.08,R*.1);c.lineTo(R*.24,R*.14);c.lineTo(R*.2,R*.02);c.quadraticCurveTo(0,-R*.12,-R*.2,R*.02);c.fill();c.stroke();c.restore()});
+  // long wings with black tips
+  function wing(sd,ang){
+    c.save();c.translate(sd*R*.82,-R*.02);c.rotate(-sd*ang);
+    const path=()=>{c.beginPath();c.moveTo(0,-R*.2);c.quadraticCurveTo(sd*R*.75,-R*.5,sd*R*1.6,-R*.32);c.quadraticCurveTo(sd*R*.85,R*.02,0,R*.22);c.closePath()};
+    path();c.fillStyle='#fff';c.fill();
+    c.save();path();c.clip();c.fillStyle=OL;c.beginPath();
+    c.moveTo(sd*R*1.12,-R*.6);c.lineTo(sd*R*1.22,-R*.28);c.lineTo(sd*R*1.1,-R*.2);c.lineTo(sd*R*1.24,-R*.1);c.lineTo(sd*R*2,0);c.lineTo(sd*R*2,-R*.6);c.closePath();c.fill();c.restore();
+    path();c.strokeStyle=OL;c.lineWidth=LW;c.stroke();c.restore();
+  }
+  wing(-1,flap);wing(1,flap+waveR);
+  // head / body
+  c.fillStyle='#fff';c.strokeStyle=OL;c.lineWidth=LW;c.beginPath();c.arc(0,0,R,0,Math.PI*2);c.fill();c.stroke();
+  // sailor cap, tilted on the right
+  c.save();c.translate(R*.42,-R*.8);c.rotate(.5);c.scale(1.22,1.22);
+  const cap=()=>{c.beginPath();c.moveTo(-R*.42,R*.22);c.lineTo(-R*.5,-R*.26);c.quadraticCurveTo(0,-R*.42,R*.5,-R*.26);c.lineTo(R*.42,R*.22);c.quadraticCurveTo(0,R*.3,-R*.42,R*.22);c.closePath()};
+  cap();c.fillStyle='#fff';c.fill();
+  c.save();cap();c.clip();c.strokeStyle='#2b2d8f';c.lineWidth=R*.085;
+  for(let k=0;k<3;k++){const y=-R*.25+k*R*.15;c.beginPath();c.moveTo(-R*.6,y+R*.02);c.quadraticCurveTo(0,y-R*.14,R*.6,y+R*.02);c.stroke()}c.restore();
+  cap();c.strokeStyle=OL;c.lineWidth=LW;c.stroke();c.restore();
+  // eyes: half-lidded, looking left; closed on blink / wink
   const blink=[1.9,4.1,5.9,9.2].some(b=>t>b&&t<b+.12), wink=t>8.6&&t<9.1;
-  c.fillStyle='#2b2f3f';c.strokeStyle='#2b2f3f';c.lineWidth=7;
-  [[-1,blink],[1,blink||wink]].forEach(([sd,closed])=>{const ex=sd*R*.36,ey=-R*.2;
-    if(closed){c.beginPath();c.arc(ex,ey+4,16,Math.PI*1.1,Math.PI*1.9);c.stroke()}
-    else{c.beginPath();c.ellipse(ex,ey,14,19,0,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(ex+5,ey-7,6,0,Math.PI*2);c.fill();c.beginPath();c.arc(ex-4,ey+6,3,0,Math.PI*2);c.fill();c.fillStyle='#2b2f3f'}});
-  c.fillStyle=K.blush;c.globalAlpha=.8;c.beginPath();c.ellipse(-R*.62,R*.08,22,13,0,0,Math.PI*2);c.ellipse(R*.62,R*.08,22,13,0,0,Math.PI*2);c.fill();c.globalAlpha=1;
-  // beak (opens when calling out)
+  [[-R*.2,-R*.3,blink],[R*.28,-R*.18,blink||wink]].forEach(([ex,ey,closed])=>{
+    c.strokeStyle=OL;c.lineWidth=7;
+    if(closed){c.beginPath();c.arc(ex,ey-4,15,Math.PI*.15,Math.PI*.85);c.stroke();return}
+    c.fillStyle=OL;c.beginPath();c.ellipse(ex-5,ey+4,17,14,0,0,Math.PI);c.fill();      // pupil under the lid
+    c.lineWidth=8;c.beginPath();c.moveTo(ex-24,ey+3);c.quadraticCurveTo(ex,ey-8,ex+22,ey+5);c.stroke(); // lid
+    c.lineWidth=5;c.beginPath();c.arc(ex+6,ey-26,9,Math.PI*1.1,Math.PI*1.95);c.stroke();   // little brow curl
+  });
+  // pouty pink mouth
+  c.fillStyle='#f6b8cf';c.strokeStyle=OL;c.lineWidth=6;
+  c.beginPath();c.moveTo(-R*.02,R*.46);c.quadraticCurveTo(R*.12,R*.3,R*.3,R*.44);c.quadraticCurveTo(R*.14,R*.4,-R*.02,R*.46);c.fill();c.stroke();
+  // big yellow beak pointing left (opens when calling out)
   const open=t>1.2&&t<1.6||t>2&&t<2.6||t>7&&t<8.2||t>8.6&&t<8.85;
-  c.fillStyle='#ffc93c';c.strokeStyle='#c98a12';c.lineWidth=5;c.lineJoin='round';
-  const by=R*.02;
-  c.beginPath();c.moveTo(-R*.2,by);c.quadraticCurveTo(0,by-R*.1,R*.2,by);c.lineTo(0,by+R*.2-(open?R*.06:0));c.closePath();c.fill();c.stroke();
-  if(open){c.fillStyle='#b8323f';c.beginPath();c.moveTo(-R*.14,by+R*.12);c.lineTo(R*.14,by+R*.12);c.lineTo(0,by+R*.3);c.closePath();c.fill();
-    c.fillStyle='#ffc93c';c.beginPath();c.moveTo(-R*.15,by+R*.16);c.lineTo(R*.15,by+R*.16);c.lineTo(0,by+R*.32);c.closePath();c.fill();c.stroke()}
-  c.fillStyle='#e8413c';c.beginPath();c.arc(R*.07,by+R*.1-(open?R*.03:0),5,0,Math.PI*2);c.fill();
+  const bg=c.createLinearGradient(-R*1.1,0,-R*.3,0);bg.addColorStop(0,'#ffe94d');bg.addColorStop(1,'#f5c400');
+  const oa=open?R*.12:0;
+  c.save();c.translate(-R*.42,0);c.scale(1.3,1.3);c.translate(R*.42,0);
+  c.fillStyle=bg;c.strokeStyle=OL;c.lineWidth=LW;
+  c.beginPath();c.moveTo(-R*.55,-R*.42);c.lineTo(-R*1.12,-R*.02-oa*.4);c.lineTo(-R*.4,R*.06);c.quadraticCurveTo(-R*.28,-R*.2,-R*.55,-R*.42);c.closePath();c.fill();c.stroke();
+  c.beginPath();c.moveTo(-R*1.05,R*.04+oa*.4);c.lineTo(-R*.4,R*.1+oa);c.lineTo(-R*.42,R*.22+oa);c.quadraticCurveTo(-R*.75,R*.16+oa,-R*1.05,R*.04+oa*.4);c.closePath();c.fill();c.stroke();
+  c.fillStyle='#d4141c';c.beginPath();c.moveTo(-R*.5,-R*.12);c.lineTo(-R*.78,R*.04+oa*.5);c.lineTo(-R*.46,R*.06+oa*.8);c.closePath();c.fill();
+  c.lineWidth=5;c.stroke();c.restore();
   c.restore();
   return m;
 }
