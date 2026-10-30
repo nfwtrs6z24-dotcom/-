@@ -2,9 +2,9 @@
   "name": "第33回愛媛県秋季学童軟式野球大会_開会式_八幡浜JBC",
   "sources_dir": "footage",
   "out_dir": "out",
-  "bgm": null,
-  "bgm_volume": 0.8,
-  "source_volume": 1.0,
+  "bgm": "auto",
+  "bgm_volume": 1.0,
+  "source_volume": 0.0,
   "titles": [
     {"start": 0.5, "end": 4.5, "text": "第33回\n愛媛県秋季学童軟式野球大会", "text_tate": "第33回\n愛媛県秋季\n学童軟式野球大会", "sub": "開 会 式"},
     {"start": -5.0, "end": -0.3, "text": "八幡浜ジュニア\nベースボールクラブ", "sub": "YAWATAHAMA JUNIOR BASEBALL CLUB"}

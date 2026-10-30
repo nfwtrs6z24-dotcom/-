@@ -173,11 +173,22 @@ def write_ass(edit, fmt, total, path):
 
 def finish(edit, joined, total, ass, out, base):
     vf = (f"[0:v]ass={ass}:fontsdir=/usr/share/fonts,"
-          f"fade=t=in:st=0:d=0.6,fade=t=out:st={total - 1.0}:d=1.0[v]")
+          f"fade=t=in:st=0:d=0.6,fade=t=out:st={total - 1.5}:d=1.5[v]")
     inputs = ["-i", str(joined)]
     bgm = edit.get("bgm")
     src_vol = float(edit.get("source_volume", 1.0))
-    if bgm:
+    if bgm == "auto":
+        # オリジナルBGMを映像の長さで生成し、曲終わりのキメを動画の最後に合わせる
+        wav = base / "work" / "bgm_auto.wav"
+        run([sys.executable, str(Path(__file__).with_name("bgm.py")), f"{total}", str(wav)])
+        bgm_len = float(subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(wav)],
+            capture_output=True, text=True, check=True).stdout)
+        inputs += ["-ss", f"{max(0.0, bgm_len - total)}", "-i", str(wav)]
+        bgm_vol = float(edit.get("bgm_volume", 0.8))
+        af = (f"[0:a]volume={src_vol}[s];[1:a]volume={bgm_vol},afade=t=in:st=0:d=0.5[b];"
+              f"[s][b]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[a]")
+    elif bgm:
         inputs += ["-stream_loop", "-1", "-i", str(base / bgm)]
         bgm_vol = float(edit.get("bgm_volume", 0.8))
         af = (f"[0:a]volume={src_vol}[s];[1:a]volume={bgm_vol},atrim=0:{total},"
