@@ -199,7 +199,8 @@ def finish(edit, joined, total, ass, out, base):
     if bgm == "auto":
         # オリジナルBGMを映像の長さで生成し、曲終わりのキメを動画の最後に合わせる
         wav = base / "work" / "bgm_auto.wav"
-        run([sys.executable, str(Path(__file__).with_name("bgm.py")), f"{total}", str(wav)])
+        run([sys.executable, str(Path(__file__).with_name("bgm.py")), f"{total}", str(wav),
+             str(edit.get("bgm_intro_bars", 4))])
         bgm_len = float(subprocess.run(
             ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(wav)],
             capture_output=True, text=True, check=True).stdout)

@@ -1,0 +1,23 @@
+{
+  "name": "第33回愛媛県秋季学童軟式野球大会_開会式_八幡浜JBC_30秒",
+  "sources_dir": "footage",
+  "out_dir": "out",
+  "bgm": "auto",
+  "bgm_intro_bars": 2,
+  "bgm_volume": 1.0,
+  "source_volume": 0.0,
+  "titles": [
+    {"start": 0.3, "end": 3.5, "text": "第33回\n愛媛県秋季学童軟式野球大会", "text_tate": "第33回\n愛媛県秋季\n学童軟式野球大会", "sub": "開 会 式"},
+    {"start": -3.0, "end": -0.2, "text": "八幡浜ジュニア\nベースボールクラブ", "sub": "YAWATAHAMA JUNIOR BASEBALL CLUB"}
+  ],
+  "lower_thirds": [
+    {"start": 4.2, "end": 9.8, "text": "入場行進　八幡浜ジュニアベースボールクラブ", "text_tate": "入場行進\n八幡浜ジュニアベースボールクラブ"}
+  ],
+  "clips": [
+    {"label": "イントロ: 夜明けの球場+タイトル",       "src": "102G0088.mov", "in": 1.5,  "out": 5.25,  "vx": 0.85},
+    {"label": "ドロップ: 八幡浜 入場行進(全員)",       "src": "102G0091.mov", "in": 16.5, "out": 24.0,  "vx_tate": [[0, 0.0], [2.5, 0.12]]},
+    {"label": "メロディ: 先頭のプラカード〜最後尾まで1カット(全員)", "src": "102G0093.mov", "in": 0.0, "out": 13.125,
+     "vx_tate": [[0, 0.1], [13.125, 0.95]]},
+    {"label": "キメ: 旗手+チーム名",                   "src": "102G0103.mov", "in": 1.5,  "out": 6.375, "vx": 0.43}
+  ]
+}

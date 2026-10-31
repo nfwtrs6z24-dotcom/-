@@ -2,6 +2,7 @@
 """開会式用オリジナルBGM（128BPM・Dマイナーの行進系ロック）を合成する。
 
     python3 bgm.py 60 bgm.wav     # 約60秒に合わせて生成（最後はキメの一発で終わる）
+    python3 bgm.py 30 bgm.wav 2   # イントロを2小節に短縮
 
 構成: イントロ(ビルド4小節) → A(ドラム+ベース+コード) → B(メロディ追加) → キメ+余韻
 指定秒数に合わせて A/B の小節数を伸び縮みさせる。
@@ -164,9 +165,9 @@ def riser(dur):
     return out * (t / dur) ** 2 * 0.35
 
 
-def compose(target):
-    intro_bars, end_tail = 4, 3.0
-    body = max(8, int(np.ceil((target - end_tail - intro_bars * BAR) / BAR / 4)) * 4)
+def compose(target, intro_bars=4):
+    end_tail = 3.0
+    body = max(8, int(np.ceil((target - end_tail - intro_bars * BAR) / BAR / 4 - 0.05)) * 4)
     a_bars = max(4, (body // 2) // 4 * 4)
     b_bars = body - a_bars
     total_bars = intro_bars + a_bars + b_bars
@@ -260,6 +261,7 @@ def write_wav(path, st):
 if __name__ == "__main__":
     target = float(sys.argv[1]) if len(sys.argv) > 1 else 60
     out = sys.argv[2] if len(sys.argv) > 2 else "bgm.wav"
-    st, dur = compose(target)
+    intro = int(sys.argv[3]) if len(sys.argv) > 3 else 4
+    st, dur = compose(target, intro)
     write_wav(out, st)
     print(f"{out}: {dur:.2f}s  (キメの位置 {dur - 3.0:.2f}s)")
