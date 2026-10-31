@@ -6,13 +6,28 @@
   "bgm_volume": 1.0,
   "source_volume": 0.0,
   "titles": [
-    {"start": 0.5, "end": 4.5, "text": "第33回\n愛媛県秋季学童軟式野球大会", "text_tate": "第33回\n愛媛県秋季\n学童軟式野球大会", "sub": "開 会 式"},
-    {"start": -5.0, "end": -0.3, "text": "八幡浜ジュニア\nベースボールクラブ", "sub": "YAWATAHAMA JUNIOR BASEBALL CLUB"}
+    {"start": 0.4, "end": 3.6, "text": "第33回\n愛媛県秋季学童軟式野球大会", "text_tate": "第33回\n愛媛県秋季\n学童軟式野球大会", "sub": "開 会 式"},
+    {"start": -3.0, "end": -0.2, "text": "八幡浜ジュニア\nベースボールクラブ", "sub": "YAWATAHAMA JUNIOR BASEBALL CLUB"}
   ],
-  "lower_thirds": [],
+  "lower_thirds": [
+    {"start": 8.2, "end": 13.8, "text": "入場行進　八幡浜ジュニアベースボールクラブ", "text_tate": "入場行進\n八幡浜ジュニアベースボールクラブ"}
+  ],
   "clips": [
-    {"src": "SAMPLE.MP4", "in": "0:00", "out": "0:05", "vx": 0.5, "label": "会場の引き"},
-    {"src": "SAMPLE.MP4", "in": "0:05", "out": "0:10", "vx": 0.5, "label": "入場行進", "xfade": 0.4},
-    {"src": "SAMPLE.MP4", "in": "0:10", "out": "0:15", "vx": 0.5, "label": "集合", "stabilize": false}
+    {"label": "イントロ: 夜明けの球場",       "src": "102G0088.mov", "in": 1.5,  "out": 5.25,  "vx": 0.85},
+    {"label": "イントロ: スコアボード",       "src": "102G0095.mov", "in": 1.0,  "out": 4.75,  "fit_tate": true},
+    {"label": "A: 八幡浜 入場行進(ドロップ)", "src": "102G0091.mov", "in": 16.5, "out": 24.0,  "vx_tate": [[0, 0.0], [2.5, 0.12]]},
+    {"label": "A: 全チーム整列",             "src": "102G0090.mov", "in": 1.0,  "out": 4.75,  "fit_tate": true},
+    {"label": "A: 国旗・大会旗",             "src": "102G0094.mov", "in": 12.0, "out": 15.75, "vx": 0.43},
+    {"label": "A: あいさつ",                 "src": "102G0096.mov", "in": 1.0,  "out": 4.75,  "vx": 0.21},
+    {"label": "A: 八幡浜プラカード",         "src": "102G0093.mov", "in": 0.0,  "out": 3.75,  "vx": 0.17},
+    {"label": "A: 八幡浜 整列",              "src": "102G0097.mov", "in": 3.0,  "out": 6.75,  "vx_tate": 0.0},
+    {"label": "A: 八幡浜 選手の寄り",         "src": "102G0098.mov", "in": 2.0,  "out": 5.75},
+    {"label": "B: 旗手(メロディ頭)",          "src": "102G0103.mov", "in": 1.5,  "out": 9.0,   "vx": 0.43},
+    {"label": "B: 全体整列",                 "src": "102G0101.mov", "in": 2.0,  "out": 5.75,  "vx": 0.6},
+    {"label": "B: 八幡浜 選手",              "src": "102G0099.mov", "in": 1.0,  "out": 4.75},
+    {"label": "B: 式典 引き",                "src": "102G0102.mov", "in": 1.0,  "out": 4.75,  "fit_tate": true},
+    {"label": "B: 退場行進",                 "src": "102G0104.mov", "in": 8.5,  "out": 12.25, "vx": 0.75},
+    {"label": "B: 行進 引き",                "src": "102G0091.mov", "in": 40.0, "out": 47.5,  "vx": 0.18},
+    {"label": "ラスト: キメ＋チーム名",       "src": "102G0097.mov", "in": 12.0, "out": 15.0,  "vx_tate": 0.0}
   ]
 }

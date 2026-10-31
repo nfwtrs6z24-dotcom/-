@@ -48,48 +48,67 @@ def to_sec(v):
     return sec
 
 
-def clip_filter(clip, w, h):
-    """素材を指定サイズに合わせる。縦型は横素材から切り出し位置 vx (0〜1) でクロップ。"""
-    chain = []
-    if clip.get("stabilize"):
-        chain.append("deshake=rx=32:ry=32")
-    vx = float(clip.get("vx", 0.5))
-    vy = float(clip.get("vy", 0.5))
-    # アスペクト比を保ったまま画面を埋め、はみ出しを指定位置でクロップ
-    chain.append(
-        f"scale={w}:{h}:force_original_aspect_ratio=increase:flags=lanczos"
-    )
-    chain.append(f"crop={w}:{h}:(iw-{w})*{vx}:(ih-{h})*{vy}")
-    if clip.get("slow"):
-        chain.append(f"setpts={1/float(clip['slow'])}*PTS")
-    chain += [GRADE, f"fps={FPS}", "format=yuv420p", "setsar=1"]
-    return ",".join(chain)
+def opt(clip, key, fmt, default=None):
+    """"vx_tate" のように形式ごとの指定があればそれを優先する。"""
+    return clip.get(f"{key}_{fmt}", clip.get(key, default))
+
+
+def keyframe_expr(v):
+    """数値か [[秒, 値], ...] を受け取り、時間 t で直線補間する ffmpeg の式にする。"""
+    if not isinstance(v, list):
+        return f"{float(v)}"
+    pts = sorted((float(t), float(x)) for t, x in v)
+    expr = f"{pts[-1][1]}"
+    for (t0, x0), (t1, x1) in reversed(list(zip(pts, pts[1:]))):
+        expr = f"if(lt(t,{t1}),{x0}+({x1 - x0})*(t-{t0})/{t1 - t0},{expr})"
+    return f"if(lt(t,{pts[0][0]}),{pts[0][1]},{expr})"
+
+
+def clip_graph(clip, w, h, fmt):
+    """素材を指定サイズに合わせる filter_complex（[0:v] → [v]）。
+
+    通常: 画面を埋めるようにスケールし、はみ出しを vx/vy (0〜1、キーフレーム可) の位置で切り出す。
+    fit:  画面全体を見せる。余白は同じ映像をぼかして暗くした背景で埋める（縦型の引きの画用）。
+    """
+    pre = "deshake=rx=32:ry=32," if clip.get("stabilize") else ""
+    post = f"{GRADE},fps={FPS},format=yuv420p,setsar=1"
+    if opt(clip, "fit", fmt):
+        return (f"[0:v]{pre}split[a][b];"
+                f"[a]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},"
+                f"scale=iw/8:ih/8,boxblur=20:2,scale={w}:{h},eq=brightness=-0.12:saturation=0.8[bg];"
+                f"[b]scale={w}:{h}:force_original_aspect_ratio=decrease:flags=lanczos[fg];"
+                f"[bg][fg]overlay=(W-w)/2:(H-h)/2,{post}[v]")
+    vx = keyframe_expr(opt(clip, "vx", fmt, 0.5))
+    vy = keyframe_expr(opt(clip, "vy", fmt, 0.5))
+    return (f"[0:v]{pre}scale={w}:{h}:force_original_aspect_ratio=increase:flags=lanczos,"
+            f"crop={w}:{h}:'(iw-{w})*({vx})':'(ih-{h})*({vy})',{post}[v]")
 
 
 def render_clips(edit, src_dir, work, fmt):
+    """各カットを書き出す。尺はタイムライン上の位置をフレーム単位に丸めて決め、
+    BGM の拍とのズレが積み重ならないようにする。"""
     w, h = FORMATS[fmt]
-    outs = []
+    outs, pos = [], 0.0
     for i, clip in enumerate(edit["clips"]):
         out = work / f"{fmt}_{i:03d}.mp4"
         start, end = to_sec(clip["in"]), to_sec(clip["out"])
-        slow = float(clip.get("slow", 1))
-        af = "aresample=48000"
-        if slow != 1:
-            af += f",atempo={max(0.5, slow)}"
+        nframes = round((pos + end - start) * FPS) - round(pos * FPS)
+        pos += end - start
+        dur = nframes / FPS
         run([
             "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-            "-ss", f"{start}", "-to", f"{end}", "-i", str(src_dir / clip["src"]),
-            "-f", "lavfi", "-t", f"{(end - start) / slow}", "-i", "anullsrc=r=48000:cl=stereo",
+            "-ss", f"{start}", "-i", str(src_dir / clip["src"]),
+            "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
             "-filter_complex",
-            f"[0:v]{clip_filter(clip, w, h)}[v];"
-            f"[0:a]{af}[a0];[a0][1:a]amix=inputs=2:duration=longest:normalize=0[a]",
-            "-map", "[v]", "-map", "[a]",
-            "-t", f"{(end - start) / slow}",
+            f"{clip_graph(clip, w, h, fmt)};"
+            f"[0:a]aresample=48000[a0];[a0][1:a]amix=inputs=2:duration=longest:normalize=0,"
+            f"atrim=0:{dur}[a]",
+            "-map", "[v]", "-map", "[a]", "-frames:v", str(nframes),
             "-c:v", "libx264", "-preset", "medium", "-crf", "16",
             "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
             str(out),
         ])
-        outs.append((out, (end - start) / slow, clip))
+        outs.append((out, dur, clip))
     return outs
 
 
@@ -167,7 +186,7 @@ def write_ass(edit, fmt, total, path):
     for t in edit.get("lower_thirds", []):
         s, e = to_sec(t["start"]), to_sec(t["end"])
         lines.append(f"Dialogue: 0,{ts(s)},{ts(e)},Lower,,0,0,0,,"
-                     f"{{\\fad(250,250)}}{t['text'].replace(chr(10), '\\N')}")
+                     f"{{\\fad(250,250)}}{t.get(f'text_{fmt}', t['text']).replace(chr(10), '\\N')}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
