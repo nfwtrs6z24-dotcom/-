@@ -1,8 +1,9 @@
 {
-  "name": "第33回愛媛県秋季学童軟式野球大会_開会式_八幡浜JBC",
+  "name": "第33回愛媛県秋季学童軟式野球大会_開会式_八幡浜JBC_59秒",
   "sources_dir": "footage",
   "out_dir": "out",
   "bgm": "auto",
+  "bgm_intro_bars": 2,
   "bgm_volume": 1.0,
   "source_volume": 0.0,
   "titles": [
@@ -24,10 +25,8 @@
     {"label": "A: 八幡浜 選手の寄り",         "src": "102G0098.mov", "in": 2.0,  "out": 5.75},
     {"label": "B: 旗手(メロディ頭)",          "src": "102G0103.mov", "in": 1.5,  "out": 9.0,   "vx": 0.43},
     {"label": "B: 全体整列",                 "src": "102G0101.mov", "in": 2.0,  "out": 5.75,  "vx": 0.6},
-    {"label": "B: 八幡浜 選手",              "src": "102G0099.mov", "in": 1.0,  "out": 4.75},
     {"label": "B: 式典 引き",                "src": "102G0102.mov", "in": 1.0,  "out": 4.75,  "fit_tate": true},
     {"label": "B: 退場行進",                 "src": "102G0104.mov", "in": 8.5,  "out": 12.25, "vx": 0.75},
-    {"label": "B: 行進 引き",                "src": "102G0091.mov", "in": 40.0, "out": 47.5,  "vx": 0.18},
     {"label": "ラスト: キメ＋チーム名",       "src": "102G0097.mov", "in": 12.0, "out": 15.0,  "vx_tate": 0.0}
   ]
 }
