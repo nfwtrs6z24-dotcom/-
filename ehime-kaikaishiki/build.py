@@ -181,12 +181,13 @@ def write_ass(edit, fmt, total, path):
         main = text.replace("\n", "\\N")
         n = text.count("\n") + 1
         ty = cy - (sub // 2 + 20 if t.get("sub") else 0)
-        sy = ty + big * n // 2 + sub // 2 + 30
+        sn = t.get(f"sub_{fmt}", t.get("sub", "")).count("\n") + 1
+        sy = ty + big * n // 2 + sub * sn // 2 + 30
         lines.append(
             f"Dialogue: 1,{ts(s)},{ts(e)},Title,,0,0,0,,"
             f"{{\\fad(400,400)\\move({cx - 40},{ty},{cx},{ty},0,400)}}{main}")
         if t.get("sub"):
-            subtxt = t["sub"].replace("\n", "\\N")
+            subtxt = t.get(f"sub_{fmt}", t["sub"]).replace("\n", "\\N")
             lines.append(
                 f"Dialogue: 1,{ts(s + 0.25)},{ts(e)},Sub,,0,0,0,,"
                 f"{{\\fad(400,400)\\move({cx + 40},{sy},{cx},{sy},0,400)}}{subtxt}")
