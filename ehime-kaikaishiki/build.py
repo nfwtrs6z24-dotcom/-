@@ -64,13 +64,18 @@ def keyframe_expr(v):
     return f"if(lt(t,{pts[0][0]}),{pts[0][1]},{expr})"
 
 
-def clip_graph(clip, w, h, fmt):
+def clip_graph(clip, w, h, fmt, skip=0.0):
     """素材を指定サイズに合わせる filter_complex（[0:v] → [v]）。
 
     通常: 画面を埋めるようにスケールし、はみ出しを vx/vy (0〜1、キーフレーム可) の位置で切り出す。
     fit:  画面全体を見せる。余白は同じ映像をぼかして暗くした背景で埋める（縦型の引きの画用）。
     """
-    pre = "deshake=rx=32:ry=32," if clip.get("stabilize") else ""
+    pre = f"trim=start={skip},setpts=PTS-STARTPTS,bwdif=deint=interlaced,"  # インターレース素材(MTS等)だけ解除。プログレッシブはそのまま
+    if clip.get("zoom"):  # [x, y, w, h]: 引きの画を少し寄せる（元素材の画素で指定）
+        x, y, zw, zh = clip["zoom"]
+        pre += f"crop={zw}:{zh}:{x}:{y},"
+    if clip.get("stabilize"):
+        pre += "deshake=rx=32:ry=32,"
     post = f"{GRADE},fps={FPS},format=yuv420p,setsar=1"
     if opt(clip, "fit", fmt):
         return (f"[0:v]{pre}split[a][b];"
@@ -95,13 +100,15 @@ def render_clips(edit, src_dir, work, fmt):
         nframes = round((pos + end - start) * FPS) - round(pos * FPS)
         pos += end - start
         dur = nframes / FPS
+        # 長いGOP素材でも頭のコマが崩れないよう、3秒手前から読んで正確に切り出す
+        pre_ss = max(0.0, start - 3)
         run([
             "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-            "-ss", f"{start}", "-i", str(src_dir / clip["src"]),
+            "-ss", f"{pre_ss}", "-i", str(src_dir / clip["src"]),
             "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
             "-filter_complex",
-            f"{clip_graph(clip, w, h, fmt)};"
-            f"[0:a]aresample=48000[a0];[a0][1:a]amix=inputs=2:duration=longest:normalize=0,"
+            f"{clip_graph(clip, w, h, fmt, start - pre_ss)};"
+            f"[0:a]atrim=start={start - pre_ss},asetpts=PTS-STARTPTS,aresample=48000[a0];[a0][1:a]amix=inputs=2:duration=longest:normalize=0,"
             f"atrim=0:{dur}[a]",
             "-map", "[v]", "-map", "[a]", "-frames:v", str(nframes),
             "-c:v", "libx264", "-preset", "medium", "-crf", "16",
@@ -158,7 +165,7 @@ def write_ass(edit, fmt, total, path):
         "Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
         f"Style: Title,{font},{big},&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,-1,0,0,0,100,100,4,0,1,6,3,5,60,60,0,1",
         f"Style: Sub,{font},{sub},{accent},{accent},&H00101010,&H90000000,-1,0,0,0,100,100,6,0,1,4,2,5,60,60,0,1",
-        f"Style: Lower,{font},{sub},&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,-1,0,0,0,100,100,2,0,1,4,2,"
+        f"Style: Lower,{font},{sub},&H00FFFFFF,&H00FFFFFF,&H50000000,&H90000000,-1,0,0,0,100,100,2,0,3,14,0,"
         f"{1 if not tate else 2},70,70,{90 if not tate else 260},1",
         "", "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
@@ -198,7 +205,7 @@ def finish(edit, joined, total, ass, out, base):
     src_vol = float(edit.get("source_volume", 1.0))
     if bgm == "auto":
         # オリジナルBGMを映像の長さで生成し、曲終わりのキメを動画の最後に合わせる
-        wav = base / "work" / "bgm_auto.wav"
+        wav = base / "work" / "build" / "bgm_auto.wav"
         run([sys.executable, str(Path(__file__).with_name("bgm.py")), f"{total}", str(wav),
              str(edit.get("bgm_intro_bars", 4))])
         bgm_len = float(subprocess.run(
@@ -235,9 +242,9 @@ def main():
     edit = json.loads(edit_path.read_text(encoding="utf-8"))
     src_dir = base / edit.get("sources_dir", "footage")
     out_dir = base / edit.get("out_dir", "out")
-    work = base / "work"
+    work = base / "work" / "build"  # 解析結果など work/ の他のファイルは消さない
     out_dir.mkdir(exist_ok=True)
-    work.mkdir(exist_ok=True)
+    work.mkdir(parents=True, exist_ok=True)
 
     for fmt in ([args.only] if args.only else FORMATS):
         parts = render_clips(edit, src_dir, work, fmt)
