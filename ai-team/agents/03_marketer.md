@@ -5,8 +5,8 @@
 
 ## 必要な入力情報
 - `brief.md`（Xアカウントの状況・口調、NG事項）
-- `outputs/02_note_draft.md`（タイトル、本文、引き継ぎメモ）
-- `outputs/01_research.md` の「読者の悩みリスト」「ペルソナ」
+- `outputs/note_draft.md`（タイトル、本文、引き継ぎメモ）
+- `outputs/01_research_10themes.md` の「読者の悩みリスト」「ペルソナ」
 - 統括からの引き継ぎメモ
 
 ## 作業手順

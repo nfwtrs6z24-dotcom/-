@@ -16,11 +16,15 @@
 ```
 brief.md（依頼者の回答）
    ↓
-社員① 市場調査 → outputs/01_research.md
+社員① 市場調査 → outputs/01_research_10themes.md（テーマ10案）
+              → outputs/01b_theme_scoring.md（採点・1案に選定）
    ↓  統括チェック①
-社員② 記事制作 → outputs/02_note_draft.md
+社員② 記事制作 → outputs/note_draft.md（タイトル10案・有料ライン設計・本文）
+   ↓  ★ 人間が【本人が追記】に自分の経験を書き足す
    ↓  統括チェック②
 社員③ マーケティング → outputs/03_x_posts.md
    ↓  統括チェック③
 outputs/00_final_report.md（最終報告・販売前チェックリスト）
 ```
+
+過去の成果物は `outputs/archive/` にあります（v1：帰りの車での声かけ）。
