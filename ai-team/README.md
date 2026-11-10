@@ -22,9 +22,9 @@ brief.md（依頼者の回答）
 社員② 記事制作 → outputs/note_draft.md（タイトル10案・有料ライン設計・本文）
    ↓  ★ 人間が【本人が追記】に自分の経験を書き足す
    ↓  統括チェック②
-社員③ マーケティング → outputs/03_x_posts.md
+社員③ マーケティング → outputs/x_posts.md
    ↓  統括チェック③
-outputs/00_final_report.md（最終報告・販売前チェックリスト）
+outputs/00_final_check.md（矛盾・誇張・一致の検証、修正一覧、未確認事項）
 ```
 
 過去の成果物は `outputs/archive/` にあります（v1：帰りの車での声かけ）。
