@@ -5,7 +5,7 @@
 
 ## 必要な入力情報
 - `brief.md`（著者の実績、口調、NG事項）
-- `outputs/01_research.md`（推奨テーマ、読者の悩み、競合の不足点、ペルソナ、見出し叩き台）
+- `outputs/01_research_10themes.md`・`outputs/01b_theme_scoring.md`（選定テーマ、読者の悩み、競合の不足点、差別化ポイント）
 - 統括からの引き継ぎメモ（確定テーマ）
 
 ## 作業手順
