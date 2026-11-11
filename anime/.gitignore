@@ -3,3 +3,5 @@ clips/*
 !clips/.gitkeep
 audio/*
 !audio/.gitkeep
+
+__pycache__/

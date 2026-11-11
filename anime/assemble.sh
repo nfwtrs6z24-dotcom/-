@@ -3,7 +3,8 @@
 #
 #   clips/S01.mp4 〜 S10.mp4 … AIで生成した各カット（無い場合は仮カードで代用＝Vコンテになる）
 #   audio/voice.wav          … セリフ・ナレーションを60秒タイムラインに並べたもの（任意）
-#   audio/bgm.wav (or .mp3)  … BGM（任意）
+#   audio/bgm.wav (or .mp3)  … BGM（任意。音量は BGM_VOL で調整, 既定 0.35）
+#   audio/se.wav             … 効果音・環境音を60秒タイムラインに並べたもの（任意）
 #
 # 使い方:
 #   ./assemble.sh            → out/master.mp4 (1920x1080 29.97p, -24LKFS, テロップ焼き込み)
@@ -53,9 +54,9 @@ ffmpeg -nostdin -v error -y -f concat -safe 0 -i "$list" -c copy out/tmp/video.m
 
 # 2) 音声: voice + bgm をミックス（無ければ無音）
 inputs=(); filt=""; n=0
-for f in audio/voice.wav audio/bgm.wav audio/bgm.mp3; do
+for f in audio/voice.wav audio/bgm.wav audio/bgm.mp3 audio/se.wav; do
   [ -f "$f" ] || continue
-  case "$f" in *bgm*) [ "${have_bgm:-0}" = 1 ] && continue; have_bgm=1; vol=0.35 ;; *) vol=1.0 ;; esac
+  case "$f" in *bgm*) [ "${have_bgm:-0}" = 1 ] && continue; have_bgm=1; vol=${BGM_VOL:-0.35} ;; *) vol=1.0 ;; esac
   inputs+=(-i "$f"); filt+="[$((n+1)):a]aresample=48000,volume=$vol,apad[a$n];"; n=$((n+1))
 done
 if [ "$n" -eq 0 ]; then
