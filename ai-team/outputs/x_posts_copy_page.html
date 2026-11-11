@@ -1,0 +1,386 @@
+<title>卒団ムービー X投稿30本</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap">
+<style>
+/* Layout: single column list of post cards, progress line sticky on top */
+:root{--bg:#fbfbf9;--fg:#1f2421;--muted:#5f6b63;--line:#dfe3df;--accent:#1c6b45;--accent-fg:#ffffff;--panel:#ffffff;--sell:#9a4b12;--body:"Noto Sans JP",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141815;--fg:#e8ece8;--muted:#a4b0a8;--line:#2c332e;--accent:#5cc28e;--accent-fg:#0d1a12;--panel:#1b201c;--sell:#f0a46a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141815;--fg:#e8ece8;--muted:#a4b0a8;--line:#2c332e;--accent:#5cc28e;--accent-fg:#0d1a12;--panel:#1b201c;--sell:#f0a46a;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.7;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 48px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-size:20px;margin:0;text-wrap:balance}
+.note{margin:0;color:var(--muted);font-size:14px}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;border-bottom:1px solid var(--line);font-size:14px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+#status{color:var(--accent);font-weight:700}
+ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.post{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.post.is-done{opacity:.55}
+.meta{display:flex;gap:8px;align-items:center;font-size:13px;flex-wrap:wrap}
+.num{font-weight:700;font-variant-numeric:tabular-nums}
+.tag{color:var(--muted);letter-spacing:.04em}
+.tag.sell,.link{color:var(--sell);font-weight:700}
+.text{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.actions{display:flex;gap:12px;align-items:center;justify-content:space-between}
+button{font:inherit;font-size:15px;font-weight:700;border:0;background:var(--accent);color:var(--accent-fg);border-radius:8px;padding:8px 18px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+.done{font-size:14px;color:var(--muted);display:flex;gap:6px;align-items:center}
+</style>
+<div class="wrap">
+<h1>卒団ムービー X投稿30本</h1>
+<p class="note">「コピー」を押してXに貼り付けてください。リンクありは販売投稿の5本です。1日1〜2本、12〜1月に集中させるのがおすすめです。#30「卒団式まであと2〜3か月」は12月〜1月上旬に使ってください。</p>
+<div class="bar"><span>投稿済み <b id="count">0</b> / 30</span><span id="status" role="status"></span></div>
+<ul>
+<li class="post" data-n="1">
+<div class="meta"><span class="num">#01</span><span class="tag">共感</span></div>
+<p class="text" id="t1">卒団ムービー係、断れずに引き受けた方へ。
+
+動画なんて作ったことがない。
+何から始めればいいか分からない。
+でも卒団式の日だけは近づいてくる。
+
+その不安、すごく分かります。
+まずは「段取り」から一緒に整理しましょう。</p>
+<div class="actions"><button type="button" class="copy" data-n="1">コピー</button>
+<label class="done"><input type="checkbox" id="d1" data-n="1"> 投稿済み</label></div>
+</li><li class="post" data-n="2">
+<div class="meta"><span class="num">#02</span><span class="tag">共感</span></div>
+<p class="text" id="t2">「写真を送ってください」と頼んだのに、全然集まらない。
+
+卒団ムービー係が最初につまずくのは、ここです。
+
+送る側が悪いわけではありません。
+どの写真を、何枚、いつまでに、どこへ送ればいいかが伝わっていないだけなんです。</p>
+<div class="actions"><button type="button" class="copy" data-n="2">コピー</button>
+<label class="done"><input type="checkbox" id="d2" data-n="2"> 投稿済み</label></div>
+</li><li class="post" data-n="3">
+<div class="meta"><span class="num">#03</span><span class="tag">共感</span></div>
+<p class="text" id="t3">集まった写真を並べてみたら、ある子だけ極端に少ない。
+
+卒団ムービー係が一番ヒヤッとする瞬間かもしれません。
+
+よく撮ってくれる家庭の子ほど写真が多くなるのは、自然なこと。
+だから、早めに気づける仕組みが必要です。</p>
+<div class="actions"><button type="button" class="copy" data-n="3">コピー</button>
+<label class="done"><input type="checkbox" id="d3" data-n="3"> 投稿済み</label></div>
+</li><li class="post" data-n="4">
+<div class="meta"><span class="num">#04</span><span class="tag">共感</span></div>
+<p class="text" id="t4">「当日、会場で再生できなかったらどうしよう」
+
+卒団ムービー係なら、一度は頭をよぎる不安だと思います。
+
+この不安は、気合いではなく準備で消せます。
+テスト再生と予備データ。この2つだけは必ず。</p>
+<div class="actions"><button type="button" class="copy" data-n="4">コピー</button>
+<label class="done"><input type="checkbox" id="d4" data-n="4"> 投稿済み</label></div>
+</li><li class="post" data-n="5">
+<div class="meta"><span class="num">#05</span><span class="tag">共感</span></div>
+<p class="text" id="t5">子どもたちが頑張ってきた数年間の、最後の記念。
+
+だから卒団ムービー係は、「失敗できない」というプレッシャーが大きい仕事です。
+
+でも、全部を一人で抱えなくて大丈夫です。
+編集以外は、頼れる人に頼っていい。</p>
+<div class="actions"><button type="button" class="copy" data-n="5">コピー</button>
+<label class="done"><input type="checkbox" id="d5" data-n="5"> 投稿済み</label></div>
+</li><li class="post" data-n="6">
+<div class="meta"><span class="num">#06</span><span class="tag">逆説</span></div>
+<p class="text" id="t6">卒団ムービーの出来は、編集の技術だけでは決まりません。
+
+つまずきやすいのは、実は編集の前です。
+
+・写真集め
+・構成
+・スケジュール
+
+この段取りができていれば、アプリの操作は後から覚えられます。</p>
+<div class="actions"><button type="button" class="copy" data-n="6">コピー</button>
+<label class="done"><input type="checkbox" id="d6" data-n="6"> 投稿済み</label></div>
+</li><li class="post" data-n="7">
+<div class="meta"><span class="num">#07</span><span class="tag">逆説</span></div>
+<p class="text" id="t7">「写真が集まってから構成を考える」は、実は逆です。
+
+先に構成表を作り、
+「このパートに足りない写真」を探しに行く。
+
+この順番にすると、写真の偏りにも早く気づけます。</p>
+<div class="actions"><button type="button" class="copy" data-n="7">コピー</button>
+<label class="done"><input type="checkbox" id="d7" data-n="7"> 投稿済み</label></div>
+</li><li class="post" data-n="8">
+<div class="meta"><span class="num">#08</span><span class="tag">逆説</span></div>
+<p class="text" id="t8">完成の目標日は、卒団式の前日ではありません。
+
+卒団ムービーなら「1週間以上前」。
+
+役員や監督に見てもらう時間と、会場での再生テストの時間を残しておくためです。</p>
+<div class="actions"><button type="button" class="copy" data-n="8">コピー</button>
+<label class="done"><input type="checkbox" id="d8" data-n="8"> 投稿済み</label></div>
+</li><li class="post" data-n="9">
+<div class="meta"><span class="num">#09</span><span class="tag">逆説</span></div>
+<p class="text" id="t9">編集アプリは、機能の多さで選ばなくていい。
+
+まず10秒ほどの試作を作って、書き出しまで通してみる。
+
+最後まで操作できたアプリが、あなたに合ったアプリです。</p>
+<div class="actions"><button type="button" class="copy" data-n="9">コピー</button>
+<label class="done"><input type="checkbox" id="d9" data-n="9"> 投稿済み</label></div>
+</li><li class="post" data-n="10">
+<div class="meta"><span class="num">#10</span><span class="tag">逆説</span></div>
+<p class="text" id="t10">最初から凝った演出を目指すと、卒団ムービーは間に合わなくなりがちです。
+
+まずは構成表どおりに写真を並べて、最後まで通す。
+テロップとBGMはその後。
+
+完成した「たたき台」があるだけで、気持ちがぐっと楽になります。</p>
+<div class="actions"><button type="button" class="copy" data-n="10">コピー</button>
+<label class="done"><input type="checkbox" id="d10" data-n="10"> 投稿済み</label></div>
+</li><li class="post" data-n="11">
+<div class="meta"><span class="num">#11</span><span class="tag">注意喚起</span></div>
+<p class="text" id="t11">名前と背番号の誤字。
+卒団ムービーで一番避けたいミスです。
+
+卒団式の場で名前を間違えるのは、とても気まずいもの。
+
+・名簿をコピーして使う
+・必ず別の人にも確認してもらう
+
+この2つで防げます。</p>
+<div class="actions"><button type="button" class="copy" data-n="11">コピー</button>
+<label class="done"><input type="checkbox" id="d11" data-n="11"> 投稿済み</label></div>
+</li><li class="post" data-n="12">
+<div class="meta"><span class="num">#12</span><span class="tag">注意喚起</span></div>
+<p class="text" id="t12">BGM選び、後回しにしていませんか？
+卒団ムービーでは要注意です。
+
+使いたい曲が決まっていても、使い方によっては権利の確認が必要になる場合があります。
+
+編集アプリで使える音源の利用規約を確認し、迷ったら役員や会場に相談を。</p>
+<div class="actions"><button type="button" class="copy" data-n="12">コピー</button>
+<label class="done"><input type="checkbox" id="d12" data-n="12"> 投稿済み</label></div>
+</li><li class="post" data-n="13">
+<div class="meta"><span class="num">#13</span><span class="tag">注意喚起</span></div>
+<p class="text" id="t13">完成した卒団ムービー、そのままSNSに上げるのは待ってください。
+
+子どもたちの顔と名前が入った動画です。
+
+共有する範囲は、事前に役員会で決めておきましょう。</p>
+<div class="actions"><button type="button" class="copy" data-n="13">コピー</button>
+<label class="done"><input type="checkbox" id="d13" data-n="13"> 投稿済み</label></div>
+</li><li class="post" data-n="14">
+<div class="meta"><span class="num">#14</span><span class="tag">注意喚起</span></div>
+<p class="text" id="t14">無料の編集アプリを使うなら、最初に1つ確認を。
+
+書き出した動画にロゴ（透かし）が入らないか。
+
+完成直前に気づくと作り直しになります。
+短い動画を書き出して、先に確かめておくのがおすすめです。</p>
+<div class="actions"><button type="button" class="copy" data-n="14">コピー</button>
+<label class="done"><input type="checkbox" id="d14" data-n="14"> 投稿済み</label></div>
+</li><li class="post" data-n="15">
+<div class="meta"><span class="num">#15</span><span class="tag">注意喚起</span></div>
+<p class="text" id="t15">編集アプリの利用規約、読みましたか？
+
+アプリによっては、個人・非営利の利用に限るものもあります。
+
+チームの行事で上映する用途に合うか、作り始める前に確認しておくと安心です。</p>
+<div class="actions"><button type="button" class="copy" data-n="15">コピー</button>
+<label class="done"><input type="checkbox" id="d15" data-n="15"> 投稿済み</label></div>
+</li><li class="post" data-n="16">
+<div class="meta"><span class="num">#16</span><span class="tag">ノウハウ</span></div>
+<p class="text" id="t16">写真募集の依頼文には、この4つを必ず入れてください。
+
+・どの写真を
+・何枚
+・いつまでに
+・どこへ
+
+送る側が迷わないことが、写真を集める第一歩です。</p>
+<div class="actions"><button type="button" class="copy" data-n="16">コピー</button>
+<label class="done"><input type="checkbox" id="d16" data-n="16"> 投稿済み</label></div>
+</li><li class="post" data-n="17">
+<div class="meta"><span class="num">#17</span><span class="tag">ノウハウ</span></div>
+<p class="text" id="t17">写真募集の依頼文に、この一言を添えるのがおすすめです。
+
+「お子さん以外の子が写っていても大丈夫です」
+
+自分の子が写っていない写真も、送ってもらいやすくなります。</p>
+<div class="actions"><button type="button" class="copy" data-n="17">コピー</button>
+<label class="done"><input type="checkbox" id="d17" data-n="17"> 投稿済み</label></div>
+</li><li class="post" data-n="18">
+<div class="meta"><span class="num">#18</span><span class="tag">ノウハウ</span></div>
+<p class="text" id="t18">写真の締め切りは「リマインド1回」込みで組みます。
+
+例えば
+・依頼：卒団式の7週間前
+・リマインド：5週間前
+・締め切り：4週間前
+
+※週数は目安。チームの事情に合わせて調整してください。</p>
+<div class="actions"><button type="button" class="copy" data-n="18">コピー</button>
+<label class="done"><input type="checkbox" id="d18" data-n="18"> 投稿済み</label></div>
+</li><li class="post" data-n="19">
+<div class="meta"><span class="num">#19</span><span class="tag">ノウハウ</span></div>
+<p class="text" id="t19">全員が主役の卒団ムービーにするコツ。
+
+一人ずつの紹介パートは、全員を同じ長さにする。
+
+写真の多い子・少ない子がいても、ここで差がつかないように構成表で先に決めておきます。</p>
+<div class="actions"><button type="button" class="copy" data-n="19">コピー</button>
+<label class="done"><input type="checkbox" id="d19" data-n="19"> 投稿済み</label></div>
+</li><li class="post" data-n="20">
+<div class="meta"><span class="num">#20</span><span class="tag">ノウハウ</span></div>
+<p class="text" id="t20">何分の動画にするか、迷っていませんか？
+
+卒団ムービーの長さは、写真の枚数から逆算します。
+
+写真1枚の表示時間 × 枚数 ＝ 全体の長さ
+
+私は1枚3〜5秒が目安。
+100枚なら約5〜8分です。
+
+先に長さを決めれば、使う枚数も決まります。</p>
+<div class="actions"><button type="button" class="copy" data-n="20">コピー</button>
+<label class="done"><input type="checkbox" id="d20" data-n="20"> 投稿済み</label></div>
+</li><li class="post" data-n="21">
+<div class="meta"><span class="num">#21</span><span class="tag">チェックリスト</span></div>
+<p class="text" id="t21">上映当日に慌てないためのチェックリスト。
+
+□ 会場の機材でテスト再生
+□ 予備データを2か所以上
+□ ケーブル・変換アダプター
+□ 後ろの席まで聞こえる音量か
+□ 再生担当と開始の合図
+
+保存しておいてください。</p>
+<div class="actions"><button type="button" class="copy" data-n="21">コピー</button>
+<label class="done"><input type="checkbox" id="d21" data-n="21"> 投稿済み</label></div>
+</li><li class="post" data-n="22">
+<div class="meta"><span class="num">#22</span><span class="tag">比較</span></div>
+<p class="text" id="t22">卒団ムービー係、つまずきやすい進め方と、つまずきにくい進め方。
+
+✕ 写真が集まってから考える
+○ 先に構成表を作る
+
+✕ 卒団式の前日に完成
+○ 1週間以上前に完成
+
+✕ 一人で全部やる
+○ 編集以外は分担する</p>
+<div class="actions"><button type="button" class="copy" data-n="22">コピー</button>
+<label class="done"><input type="checkbox" id="d22" data-n="22"> 投稿済み</label></div>
+</li><li class="post" data-n="23">
+<div class="meta"><span class="num">#23</span><span class="tag">チェックリスト</span></div>
+<p class="text" id="t23">アプリ選びで迷ったら、この3つだけ確認。
+
+□ テロップ（文字）を入れやすいか
+□ 書き出した動画にロゴが入らないか
+□ 利用規約で用途に問題がないか
+
+特定のアプリを覚えるより、この3点で選ぶほうが失敗しにくいです。</p>
+<div class="actions"><button type="button" class="copy" data-n="23">コピー</button>
+<label class="done"><input type="checkbox" id="d23" data-n="23"> 投稿済み</label></div>
+</li><li class="post" data-n="24">
+<div class="meta"><span class="num">#24</span><span class="tag">比較</span></div>
+<p class="text" id="t24">外注するか、自作するか。
+卒団ムービーの比較です。
+
+外注：依頼サイトには、5〜10分のムービーを2〜3万円程度の予算で依頼した例もあります
+
+自作：費用はかからない分、段取りが大事
+
+どちらが正解ではなく、予算と時間で選べばOKです。</p>
+<div class="actions"><button type="button" class="copy" data-n="24">コピー</button>
+<label class="done"><input type="checkbox" id="d24" data-n="24"> 投稿済み</label></div>
+</li><li class="post" data-n="25">
+<div class="meta"><span class="num">#25</span><span class="tag">チェックリスト</span></div>
+<p class="text" id="t25">作り始める前に、役員と決めておく4つのこと。
+
+□ 長さ
+□ 上映方法（プロジェクター／テレビ）
+□ 予算
+□ BGMの方針
+
+これが決まらないまま作ると、後で作り直しになりがちです。</p>
+<div class="actions"><button type="button" class="copy" data-n="25">コピー</button>
+<label class="done"><input type="checkbox" id="d25" data-n="25"> 投稿済み</label></div>
+</li><li class="post" data-n="26">
+<div class="meta"><span class="num">#26</span><span class="tag sell">販売</span><span class="link">リンクあり</span></div>
+<p class="text" id="t26">卒団ムービー係になった方へ、noteを書きました。
+
+プライベートで動画の撮影・編集をしている私が、写真集めから上映まで、スマホでもパソコンでもできる手順を5ステップでまとめています。
+
+・逆算スケジュール表
+・写真募集の依頼文
+・構成表
+
+500円
+https://note.com/brisk_emu5711/n/n77a3064188a0</p>
+<div class="actions"><button type="button" class="copy" data-n="26">コピー</button>
+<label class="done"><input type="checkbox" id="d26" data-n="26"> 投稿済み</label></div>
+</li><li class="post" data-n="27">
+<div class="meta"><span class="num">#27</span><span class="tag sell">販売</span><span class="link">リンクあり</span></div>
+<p class="text" id="t27">「写真が集まらない」
+「偏る」
+「間に合わない」
+
+卒団ムービー係のつまずきを防ぐための段取りを、テンプレートつきでまとめました。
+
+LINEにそのまま送れる写真募集の文面も入っています。
+
+500円
+https://note.com/brisk_emu5711/n/n77a3064188a0</p>
+<div class="actions"><button type="button" class="copy" data-n="27">コピー</button>
+<label class="done"><input type="checkbox" id="d27" data-n="27"> 投稿済み</label></div>
+</li><li class="post" data-n="28">
+<div class="meta"><span class="num">#28</span><span class="tag sell">販売</span><span class="link">リンクあり</span></div>
+<p class="text" id="t28">卒団ムービーは、編集の技術より段取りで決まる。
+
+この考え方をもとに、
+・8週間前からの逆算スケジュール
+・写真の偏りチェック表
+・上映当日のチェックリスト
+を1本のnoteにまとめました。
+
+500円
+https://note.com/brisk_emu5711/n/n77a3064188a0</p>
+<div class="actions"><button type="button" class="copy" data-n="28">コピー</button>
+<label class="done"><input type="checkbox" id="d28" data-n="28"> 投稿済み</label></div>
+</li><li class="post" data-n="29">
+<div class="meta"><span class="num">#29</span><span class="tag sell">販売</span><span class="link">リンクあり</span></div>
+<p class="text" id="t29">noteの無料部分では「卒団ムービーがうまくいかない本当の原因」を読めます。
+
+有料部分は、その原因をつぶす具体的な手順とテンプレートです。
+
+まずは無料部分だけでも読んでみてください。
+https://note.com/brisk_emu5711/n/n77a3064188a0</p>
+<div class="actions"><button type="button" class="copy" data-n="29">コピー</button>
+<label class="done"><input type="checkbox" id="d29" data-n="29"> 投稿済み</label></div>
+</li><li class="post" data-n="30">
+<div class="meta"><span class="num">#30</span><span class="tag sell">販売</span><span class="link">リンクあり</span></div>
+<p class="text" id="t30">卒団式まであと2〜3か月のチームも多いのでは。
+
+卒団ムービー係になったら最初に読んでほしい手順書です。
+
+今日からできる最初の一歩は、役員と「長さ・上映方法・予算・BGM」を決めること。
+その先はnoteで。
+500円
+https://note.com/brisk_emu5711/n/n77a3064188a0</p>
+<div class="actions"><button type="button" class="copy" data-n="30">コピー</button>
+<label class="done"><input type="checkbox" id="d30" data-n="30"> 投稿済み</label></div>
+</li>
+</ul>
+</div>
+<script>
+const K='xposts-done';
+let done={};try{done=JSON.parse(localStorage.getItem(K)||'{}')}catch(e){done={}}
+const st=document.getElementById('status');
+function render(){let c=0;document.querySelectorAll('.post').forEach(li=>{const n=li.dataset.n;const on=!!done[n];li.classList.toggle('is-done',on);document.getElementById('d'+n).checked=on;if(on)c++;});document.getElementById('count').textContent=c;}
+function save(){try{localStorage.setItem(K,JSON.stringify(done))}catch(e){}}
+document.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.addEventListener('change',()=>{done[cb.dataset.n]=cb.checked;save();render();}));
+document.querySelectorAll('button.copy').forEach(b=>b.addEventListener('click',async()=>{
+  const n=b.dataset.n;const t=document.getElementById('t'+n).textContent;
+  try{await navigator.clipboard.writeText(t);st.textContent='#'+n+'をコピーしました';}
+  catch(e){const r=document.createRange();r.selectNodeContents(document.getElementById('t'+n));const s=getSelection();s.removeAllRanges();s.addRange(r);let ok=false;try{ok=document.execCommand('copy')}catch(_){}st.textContent=ok?'#'+n+'をコピーしました':'#'+n+'を選択しました。「コピー」をタップしてください';}
+}));
+render();
+</script>
