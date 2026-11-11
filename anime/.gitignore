@@ -1,0 +1,5 @@
+out/
+clips/*
+!clips/.gitkeep
+audio/*
+!audio/.gitkeep
