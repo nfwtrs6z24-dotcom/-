@@ -73,7 +73,7 @@ encode () { # $1=出力 $2=映像フィルタ
     -c:v libx264 -crf 14 -preset slow -pix_fmt yuv420p -r $FPS \
     -c:a aac -b:a 320k -ar 48000 -movflags +faststart "$1"
 }
-encode out/master.mp4 "ass=telop.ass"
+encode out/master.mp4 "ass=telop.ass:fontsdir=fonts"
 echo "→ out/master.mp4"
 [ "$CLEAN" = 1 ] && encode out/clean.mp4 "null" && echo "→ out/clean.mp4"
 

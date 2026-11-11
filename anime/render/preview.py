@@ -3,6 +3,7 @@ python3 preview.py OUT.png [S01:0.5,S02:3 ...]"""
 import sys
 import cairo
 from common import W, H
+import post
 import scenes
 
 out = sys.argv[1]
@@ -17,8 +18,8 @@ for i, sp in enumerate(specs):
     if name not in cache:
         cache[name] = getattr(scenes, name)()
     s = cairo.ImageSurface(cairo.FORMAT_RGB24, W, H)
-    c = cairo.Context(s)
-    cache[name].draw(c, float(tt))
+    fr = bytearray(post.render_frame(cache[name], s, cairo, float(tt), 1001 / 30000, i, name).tobytes())
+    s = cairo.ImageSurface.create_for_data(fr, cairo.FORMAT_RGB24, W, H, W * 4)
     sc.save()
     sc.translate((i % cols) * W / 3, (i // cols) * H / 3)
     sc.scale(1 / 3, 1 / 3)

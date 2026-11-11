@@ -4,9 +4,19 @@
 角度の約束: 手足の角度は「真下=0°、前(+x)方向が正、真上=180°」の絶対角度。
 """
 import math
+import os
 import random
+import tempfile
 
-import cairo
+_FONT_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'fonts'))
+_conf = os.path.join(tempfile.gettempdir(), 'korokoro_fonts.conf')
+with open(_conf, 'w') as _f:
+    _f.write('<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig>'
+             '<include ignore_missing="yes">/etc/fonts/fonts.conf</include>'
+             f'<dir>{_FONT_DIR}</dir></fontconfig>')
+os.environ['FONTCONFIG_FILE'] = _conf
+
+import cairo  # noqa: E402
 
 W, H = 1920, 1080
 FPS = 30000 / 1001
@@ -149,9 +159,12 @@ def grade(ctx, color, alpha, op=cairo.OPERATOR_SOFT_LIGHT):
 ORANGE = '#ff9a1f'
 
 
-def draw_orange(ctx, x, y, r, rot=0.0, leaf=True, peeled=False):
+def draw_orange(ctx, x, y, r, rot=0.0, leaf=True, peeled=False, squash=1.0):
     ctx.save()
     ctx.translate(x, y)
+    if squash != 1.0:
+        ctx.translate(0, r * (1 - squash))
+        ctx.scale(1 / squash ** 0.5, squash)
     if _SIL is None:
         g = cairo.RadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r * 1.05)
         g.add_color_stop_rgb(0, *hexc('#ffc766')[:3])
@@ -239,18 +252,49 @@ SPECS = {
 }
 
 
-def _eyes(ctx, ex, ey, r, eyes):
+def _eyes(ctx, ex, ey, r, eyes, big=False):
     if eyes == 'closed':
         setc(ctx, OUTLINE)
         ctx.set_line_width(r * 0.07)
-        ctx.move_to(ex - r * 0.09, ey)
-        ctx.line_to(ex + r * 0.09, ey)
+        ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+        ctx.move_to(ex - r * 0.11, ey)
+        ctx.line_to(ex + r * 0.11, ey)
         ctx.stroke()
     elif eyes == 'happy':
         setc(ctx, OUTLINE)
         ctx.set_line_width(r * 0.07)
         ctx.set_line_cap(cairo.LINE_CAP_ROUND)
-        ctx.arc(ex, ey + r * 0.05, r * 0.1, math.pi * 1.1, math.pi * 1.9)
+        ctx.arc(ex, ey + r * 0.05, r * (0.13 if big else 0.1), math.pi * 1.1, math.pi * 1.9)
+        ctx.stroke()
+    elif eyes == 'wide':
+        ellipse(ctx, ex, ey, r * 0.17, r * 0.19)
+        fill_stroke(ctx, '#ffffff', r * 0.05)
+        ellipse(ctx, ex, ey, r * 0.06, r * 0.07)
+        setc(ctx, '#231a1e')
+        ctx.fill()
+    elif big:
+        rx, ry = r * 0.115, r * 0.165
+        ellipse(ctx, ex, ey, rx, ry)
+        setc(ctx, '#2e1c16')
+        ctx.fill()
+        ctx.save()
+        ellipse(ctx, ex, ey, rx, ry)
+        ctx.clip()
+        ellipse(ctx, ex, ey + ry * 0.75, rx * 1.2, ry * 0.8)
+        setc(ctx, '#a05a2c')
+        ctx.fill()
+        ctx.restore()
+        a = 0 if _SIL else 0.97
+        ellipse(ctx, ex + rx * 0.3, ey - ry * 0.42, rx * 0.42, ry * 0.3)
+        ctx.set_source_rgba(1, 1, 1, a)
+        ctx.fill()
+        ellipse(ctx, ex - rx * 0.35, ey + ry * 0.4, rx * 0.2, ry * 0.14)
+        ctx.set_source_rgba(1, 1, 1, a * 0.8)
+        ctx.fill()
+        setc(ctx, OUTLINE)
+        ctx.set_line_width(r * 0.05)
+        ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+        ctx.arc(ex, ey, ry * 1.02, math.pi * 1.2, math.pi * 1.8)
         ctx.stroke()
     else:
         ellipse(ctx, ex, ey, r * 0.075, r * 0.11)
@@ -303,6 +347,11 @@ def _head(ctx, kind, sp, view, r, mouth, eyes, blush=True):
         ctx.arc(0, 0, r * 1.05, math.radians(198), math.radians(342))
         ctx.close_path()
         fill_stroke(ctx, hair, lw)
+        ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+        setc(ctx, '#75668f')
+        ctx.set_line_width(r * 0.09)
+        ctx.arc(0, 0, r * 0.8, math.radians(232), math.radians(272))
+        ctx.stroke()
         # 髪どめ
         hx = r * 0.45 if view == 'side' else r * 0.55
         ellipse(ctx, hx, -r * 0.62, r * 0.13, r * 0.13)
@@ -324,7 +373,7 @@ def _head(ctx, kind, sp, view, r, mouth, eyes, blush=True):
             fill_stroke(ctx, hair, lw * 0.7)
     # 顔パーツ
     if view == 'side':
-        _eyes(ctx, r * 0.5, -r * 0.08, r, eyes)
+        _eyes(ctx, r * 0.5, -r * 0.08, r, eyes, kind == 'haru')
         if kind != 'haru':
             setc(ctx, OUTLINE)
             ctx.set_line_width(r * 0.06)
@@ -338,7 +387,7 @@ def _head(ctx, kind, sp, view, r, mouth, eyes, blush=True):
         _mouth(ctx, r * 0.74, r * 0.45, r, mouth)
     elif view == 'front':
         for sgn in (-1, 1):
-            _eyes(ctx, sgn * r * 0.36, -r * 0.05, r, eyes)
+            _eyes(ctx, sgn * r * 0.36, -r * 0.05, r, eyes, kind == 'haru')
             if blush:
                 ellipse(ctx, sgn * r * 0.55, r * 0.28, r * 0.15, r * 0.08)
                 setc(ctx, '#ff8c8c', 0.55)
@@ -389,7 +438,7 @@ def _head(ctx, kind, sp, view, r, mouth, eyes, blush=True):
             fill_stroke(ctx, '#ffffff', lw * 0.7)
 
 
-def draw_person(ctx, kind, x, y, s=1.0, facing=1, view='side', phase=0.0, stride=0.0,
+def _person_raw(ctx, kind, x, y, s=1.0, facing=1, view='side', phase=0.0, stride=0.0,
                 arms=None, reach=None, reach_back=None, sit=False, mouth=0.0, eyes='open',
                 bob=0.0, nod=0.0, lean=0.0, hold=None, hold_back=None, legs=None):
     """人物を描く。(x, y) は立ち姿なら足元、座り姿なら座面。
@@ -606,6 +655,76 @@ def draw_person(ctx, kind, x, y, s=1.0, facing=1, view='side', phase=0.0, stride
     for k, v in hands.items():
         out[k] = ctx.device_to_user(*v)
     return out
+
+
+LIGHT = dict(side=1, shadow='#4f3f86', strength=0.24, rim='#fff0c0', rim_strength=0.22, ground=0.30)
+
+
+def set_light(**kw):
+    """カットごとの光の設定。side: 光が来る側(+1=右, -1=左)"""
+    LIGHT.update(dict(side=1, shadow='#4f3f86', strength=0.24, rim='#fff0c0', rim_strength=0.22, ground=0.30))
+    LIGHT.update(kw)
+
+
+def ground_shadow(ctx, x, y, rx, alpha=None, ry=None):
+    a = LIGHT['ground'] if alpha is None else alpha
+    if _SIL is not None or a <= 0:
+        return
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.scale(rx, ry or rx * 0.2)
+    g = cairo.RadialGradient(0, 0, 0.15, 0, 0, 1)
+    g.add_color_stop_rgba(0, 0.12, 0.07, 0.2, a)
+    g.add_color_stop_rgba(1, 0.12, 0.07, 0.2, 0)
+    ctx.set_source(g)
+    ctx.arc(0, 0, 1, 0, 2 * math.pi)
+    ctx.fill()
+    ctx.restore()
+
+
+def draw_person(ctx, kind, x, y, s=1.0, shadow=True, **kw):
+    """陰影（セル影＋リムライト）と接地影つきで人物を描く"""
+    if _SIL is not None:
+        return _person_raw(ctx, kind, x, y, s, **kw)
+    sp = SPECS[kind]
+    if shadow and not kw.get('sit'):
+        ground_shadow(ctx, x, y + 3 * s, sp['tw'] * s * 1.15)
+    ctx.push_group()
+    hands = _person_raw(ctx, kind, x, y, s, **kw)
+    pat = ctx.pop_group()
+    ctx.set_source(pat)
+    ctx.paint()
+    # 横向きの人物は顔の側から光を当てる（表情が暗くならないように）
+    side = kw.get('facing', 1) if kw.get('view', 'side') == 'side' else LIGHT['side']
+    w = sp['tw'] * s
+    top = y - (sp['leg'] + sp['torso'] + sp['head'] * 2) * s
+    ctx.save()
+    if LIGHT['strength'] > 0:
+        r, g_, b, _ = hexc(LIGHT['shadow'])
+        ctx.set_operator(cairo.OPERATOR_MULTIPLY)
+        g = cairo.LinearGradient(x + side * w * 0.9, top, x - side * w * 0.9, top + w * 0.5)
+        g.add_color_stop_rgba(0.0, r, g_, b, 0)
+        g.add_color_stop_rgba(0.56, r, g_, b, 0)
+        g.add_color_stop_rgba(0.66, r, g_, b, LIGHT['strength'])
+        g.add_color_stop_rgba(1.0, r, g_, b, LIGHT['strength'])
+        ctx.set_source(g)
+        ctx.mask(pat)
+        g = cairo.LinearGradient(0, top, 0, y)
+        g.add_color_stop_rgba(0.55, r, g_, b, 0)
+        g.add_color_stop_rgba(1.0, r, g_, b, LIGHT['strength'] * 0.6)
+        ctx.set_source(g)
+        ctx.mask(pat)
+    if LIGHT['rim_strength'] > 0:
+        r, g_, b, _ = hexc(LIGHT['rim'])
+        ctx.set_operator(cairo.OPERATOR_ADD)
+        g = cairo.LinearGradient(x + side * w * 1.0, top, x - side * w * 0.2, top + w * 0.3)
+        g.add_color_stop_rgba(0.0, r, g_, b, LIGHT['rim_strength'])
+        g.add_color_stop_rgba(0.35, r, g_, b, LIGHT['rim_strength'] * 0.5)
+        g.add_color_stop_rgba(0.6, r, g_, b, 0)
+        ctx.set_source(g)
+        ctx.mask(pat)
+    ctx.restore()
+    return hands
 
 
 def silhouette(color):

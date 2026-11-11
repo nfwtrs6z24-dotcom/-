@@ -10,6 +10,8 @@ import random
 
 import cairo
 
+import fx
+from common import ground_shadow, set_light
 from common import (W, H, OUTLINE, ORANGE, Clouds, Tree, boat, bounce_path, cat, clamp, draw_orange,
                     draw_orange_half, draw_person, ellipse, fill_stroke, grade, gull, hexc, house, islands,
                     lerp, limb, mixc, rrect, sample_path, sea, seg, setc, silhouette, sky, smooth,
@@ -50,6 +52,24 @@ def blink(t, seed=0):
     return 'closed' if p < 0.12 else 'open'
 
 
+def squash_at(hits, t, amount=0.3, life=0.14):
+    """着地直後のつぶれ具合（1=つぶれなし）"""
+    for h, v in hits:
+        age = t - h
+        if 0 <= age < life:
+            return 1 - amount * min(1.0, 0.4 + v) * (1 - age / life)
+    return 1.0
+
+
+def shake_at(hits, t, amp=16, life=0.3):
+    s_ = 0.0
+    for h, v in hits:
+        age = t - h
+        if 0 <= age < life:
+            s_ += amp * v * math.exp(-age * 12) * math.cos(age * 40)
+    return s_
+
+
 def cam(ctx, cx, cy, zoom=1.0):
     ctx.translate(W / 2, H / 2)
     ctx.scale(zoom, zoom)
@@ -88,6 +108,7 @@ class S01:
     def __init__(self):
         rng = random.Random(11)
         self.clouds = Clouds(1, 5, 60, 260, 40, 80)
+        self.leaves = fx.Leaves(101, n=9)
         self.edge = lambda y: 240 + (y - 110) * 1.42
         # 静止レイヤー（丘・町）を一度だけ描いておく
         sc = 1.2
@@ -177,6 +198,7 @@ class S01:
             c.stroke()
 
     def draw(self, ctx, t):
+        set_light(side=1)
         sky(ctx, self.MORNING)
         g = cairo.RadialGradient(1700, 80, 10, 1700, 80, 600)
         g.add_color_stop_rgba(0, 1, 0.97, 0.85, 0.7)
@@ -194,8 +216,15 @@ class S01:
         ctx.restore()
         gull(ctx, 1300 + t * 40, 250 - t * 6, 0.9, t, 0.0)
         gull(ctx, 1380 + t * 36, 285 - t * 4, 0.7, t, 1.7)
+        fx.sparkles(ctx, t, 1150, 1900, 330, 560, n=26, seed=14, size=9)
+        fx.god_rays(ctx, t, x=1800, y=-200, alpha=0.11)
+        self.leaves.draw(ctx, t, direction=-1, alpha=0.85)
         grade(ctx, '#ffe2b0', 0.25)
         vignette(ctx)
+        f = 1 - seg(t, 0.0, 0.8)
+        if f > 0:
+            ctx.set_source_rgba(1, 1, 1, f)
+            ctx.paint()
 
 
 # ================================================================= S02 みかんを掲げるハル
@@ -207,6 +236,7 @@ class S02:
     def __init__(self):
         rng = random.Random(22)
         self.clouds = Clouds(2, 4, 60, 220, 50, 90)
+        self.leaves = fx.Leaves(102, n=7)
         self.trees_back = [Tree(rng, x, 470, rng.uniform(150, 190)) for x in (40, 230, 420)]
         self.tree_l = Tree(rng, 120, 760, 330)
         self.tree_r = Tree(rng, 1760, 770, 360)
@@ -214,10 +244,12 @@ class S02:
 
     def draw(self, ctx, t):
         tg = self.start + t
+        set_light(side=1)
         sky(ctx, S01.MORNING, 0, 560)
         self.clouds.draw(ctx, t)
         sea(ctx, 430, 760, '#69b2dc', '#3f8cc4', t, seed=5)
         islands(ctx, 432, '#86aec8', seed=3)
+        fx.sparkles(ctx, t, 0, W, 445, 750, n=40, seed=23, size=10)
         # 奥の段（左上の石垣と木）
         ctx.move_to(-10, 470)
         ctx.line_to(640, 470)
@@ -253,8 +285,8 @@ class S02:
             ctx.rectangle(1275 + i * 40, 900, 26, 14)
             setc(ctx, '#c99a12')
             ctx.fill()
-        for fx, fy in self.crate_fruits:
-            draw_orange(ctx, 1345 + fx, 878 + fy, 18, fx, leaf=False)
+        for cfx, cfy in self.crate_fruits:
+            draw_orange(ctx, 1345 + cfx, 878 + cfy, 18, cfx, leaf=False)
 
         # じいちゃん: 0-2.3 木の実を摘む → 振り返ってうなずく
         turned = t > 2.3
@@ -275,6 +307,9 @@ class S02:
         ty = lerp(hy - 240, hy - 380, up)
         draw_person(ctx, 'haru', hx, hy, s=2.1, facing=1, reach=(tx, ty), reach_back=(tx - 25, ty + 10),
                     hold=orange_fn(46, 0.4), mouth=talk('haru', tg), eyes=blink(t, 1), lean=-6 * up)
+        fx.twinkle(ctx, tx + 30, ty - 60, t - 1.0, size=90)
+        fx.god_rays(ctx, t, x=1950, y=-350, alpha=0.06)
+        self.leaves.draw(ctx, t, direction=-1, alpha=0.8)
         grade(ctx, '#ffe2b0', 0.22)
         vignette(ctx)
 
@@ -286,6 +321,8 @@ class S03:
     start, dur = 10.0, 4.0
     LEDGE = 880
     SLIP = 0.5
+    FACE = 2.3
+    SUB = 2
 
     def __init__(self):
         rng = random.Random(33)
@@ -295,9 +332,10 @@ class S03:
         self.r = r
         self.path, hits = bounce_path(lambda x: self.LEDGE if x < 1700 else 3000, 960, 470, 520, self.dur, r,
                                       g=3000, rest=0.38)
+        self.hl = hits
         self.hits = [(self.start + self.SLIP + h, v) for h, v in hits]
 
-    def draw(self, ctx, t):
+    def backdrop(self, ctx, shift=0.0):
         g = cairo.LinearGradient(0, 0, 0, H)
         g.add_color_stop_rgb(0, *hexc('#bfe3f2')[:3])
         g.add_color_stop_rgb(0.35, *hexc('#8fc77a')[:3])
@@ -305,62 +343,95 @@ class S03:
         ctx.set_source(g)
         ctx.paint()
         for x, y, r, c in self.bokeh:
-            ellipse(ctx, x, y, r, r)
+            ellipse(ctx, (x + shift) % (W + 300) - 150, y, r, r)
             setc(ctx, c, 0.28)
             ctx.fill()
+
+    def draw(self, ctx, t):
+        set_light(side=1)
+        if t >= self.FACE:
+            return self.draw_face(ctx, t - self.FACE)
+        self.backdrop(ctx)
         # 石垣の天端
         stone_wall(ctx, -10, self.LEDGE, W + 20, H - self.LEDGE + 10, seed=9, block=70)
         ctx.rectangle(-10, self.LEDGE - 6, W + 20, 14)
         setc(ctx, '#d8d0c0')
         ctx.fill()
         # みかん
+        tl = t - self.SLIP
         if t < self.SLIP:
             ox, oy, rot = 960, 470 + math.sin(t * 8) * 3, 0.3
         else:
-            _, ox, oy, rot = sample_path(self.path, t - self.SLIP)
+            _, ox, oy, rot = sample_path(self.path, tl)
             rot = 0.3 + rot
         # 手（左右）
         open_ = seg(t, self.SLIP, self.SLIP + 0.35)
         for sg in (-1, 1):
             hx = 960 + sg * (self.r * 0.95 + open_ * 70)
             hy = 500 + open_ * 60
-            # 前腕
             bx, by = 960 + sg * 560, H + 120
             ctx.set_line_cap(cairo.LINE_CAP_ROUND)
-            setc(ctx, OUTLINE)
-            ctx.set_line_width(118)
-            ctx.move_to(bx, by)
-            ctx.line_to(hx + sg * 40, hy + 40)
-            ctx.stroke()
-            setc(ctx, '#ffd8b5')
-            ctx.set_line_width(106)
-            ctx.move_to(bx, by)
-            ctx.line_to(hx + sg * 40, hy + 40)
-            ctx.stroke()
-            # 袖
-            setc(ctx, OUTLINE)
-            ctx.set_line_width(150)
-            ctx.move_to(bx, by)
-            ctx.line_to(lerp(bx, hx, 0.18), lerp(by, hy, 0.18))
-            ctx.stroke()
-            setc(ctx, '#ffd23f')
-            ctx.set_line_width(138)
-            ctx.move_to(bx, by)
-            ctx.line_to(lerp(bx, hx, 0.18), lerp(by, hy, 0.18))
-            ctx.stroke()
-            # 手のひら
+            for wd, col in ((118, OUTLINE), (106, '#ffd8b5')):
+                setc(ctx, col)
+                ctx.set_line_width(wd)
+                ctx.move_to(bx, by)
+                ctx.line_to(hx + sg * 40, hy + 40)
+                ctx.stroke()
+            for wd, col in ((150, OUTLINE), (138, '#ffd23f')):
+                setc(ctx, col)
+                ctx.set_line_width(wd)
+                ctx.move_to(bx, by)
+                ctx.line_to(lerp(bx, hx, 0.18), lerp(by, hy, 0.18))
+                ctx.stroke()
             ellipse(ctx, hx, hy, 78, 92)
             fill_stroke(ctx, '#ffd8b5', 6)
             ellipse(ctx, hx - sg * 52, hy - 40 - open_ * 10, 26, 40)
             fill_stroke(ctx, '#ffd8b5', 6)
-        draw_orange(ctx, ox, oy, self.r, rot)
+        if tl > 0:
+            ground_shadow(ctx, ox, self.LEDGE + 6, self.r * (1.5 - clamp((self.LEDGE - self.r - oy) / 400) * 0.8), alpha=0.35)
+            for i, (h, v) in enumerate(self.hl):
+                _, px, py, _ = sample_path(self.path, h)
+                fx.dust(ctx, px, py + self.r, tl - h, 1.6 + v, seed=i, n=9)
+                fx.impact(ctx, px, py + self.r, tl - h, 150 + 80 * v)
+        draw_orange(ctx, ox, oy, self.r, rot, squash=squash_at(self.hl, tl, 0.28))
         if t < self.SLIP + 0.1:
-            # 指（みかんの手前）
             for sg in (-1, 1):
                 hx = 960 + sg * (self.r * 0.95 + open_ * 70)
                 for k in range(3):
                     ellipse(ctx, hx - sg * 52, 450 + k * 46 + open_ * 60, 34, 20)
                     fill_stroke(ctx, '#ffd8b5', 5)
+        fl = seg(t, self.SLIP, self.SLIP + 0.12) * (1 - seg(t, 1.2, 1.7))
+        if fl > 0:
+            fx.focus_lines(ctx, t, ox, oy, inner=430, alpha=0.42 * fl, seed=31)
+        grade(ctx, '#ffe2b0', 0.2)
+        vignette(ctx)
+
+    def draw_face(self, ctx, u):
+        """ハルのアップ: びっくり → きりっ → 走り出す"""
+        self.backdrop(ctx, shift=-u * 60)
+        z = 1.14 - 0.14 * smooth(u / 0.22)
+        dash = seg(u, 1.2, 1.7)
+        calm = seg(u, 0.85, 1.0)
+        ctx.save()
+        cam(ctx, 960, 540, z)
+        jit = math.sin(u * 55) * 7 * (1 - seg(u, 0.0, 0.45))
+        if dash < 0.02:
+            arms_up = 1 - calm
+            draw_person(ctx, 'haru', 960 + jit, 1470, s=5.2, view='front', shadow=False,
+                        eyes='wide' if calm < 0.5 else 'open', mouth=0.95 * (1 - calm),
+                        reach=(960 + 300, 760, arms_up), reach_back=(960 - 300, 760, arms_up),
+                        lean=0, bob=-10 * math.sin(clamp(u / 0.25) * math.pi))
+        else:
+            x = 900 + dash ** 2 * 1900
+            draw_person(ctx, 'haru', x, 1500, s=5.2, view='side', facing=1, shadow=False,
+                        phase=x * 0.012, stride=1.6, mouth=0.35, eyes='open')
+        ctx.restore()
+        fl = (1 - seg(u, 0.75, 1.05))
+        if fl > 0:
+            fx.focus_lines(ctx, u, 960, 470, inner=560, alpha=0.5 * fl, seed=32)
+        fx.pop_mark(ctx, 1420, 300, u - 0.05, '!', size=230, life=0.95)
+        if dash > 0:
+            fx.speed_lines(ctx, u, speed=3400, alpha=0.4 * dash, seed=33)
         grade(ctx, '#ffe2b0', 0.2)
         vignette(ctx)
 
@@ -394,6 +465,7 @@ class Steps:
 class S04:
     start, dur = 14.0, 6.0
     LAG = 0.6
+    SUB = 3
 
     def __init__(self):
         rng = random.Random(44)
@@ -402,6 +474,8 @@ class S04:
         self.path, hits = bounce_path(self.st.top, -150, self.st.top(-150) - 30, 560, self.dur + 1, self.r,
                                       g=2600, rest=0.45, vy0=-200)
         self.hits = [(self.start + h, v) for h, v in hits if h < self.dur]
+        self.hl = [(h, v) for h, v in hits if h < self.dur]
+        self.fg = fx.Leaves(104, n=9, colors=('#2f6b3a', '#3f8f3a', '#4f9445'))
         self.trees = {}
         for k in range(-3, 12):
             self.trees[k] = [Tree(rng, self.st.x0 + k * self.st.sw + off, 0, rng.uniform(150, 200))
@@ -420,10 +494,13 @@ class S04:
         ox, oy, rot = self.orange_at(t)
         camx = (ox + self.haru_x(t)) / 2 + 120
         camy = sum(self.st.top(camx + d) for d in range(-500, 501, 100)) / 11 - 170
+        camy += shake_at(self.hl, t)
+        set_light(side=1)
         sky(ctx, [(0, '#86c8ee'), (1, '#e9f6ff')], 0, 520)
         self.clouds.draw(ctx, t)
         sea(ctx, 330, H, '#64aedb', '#3b88c0', t, x0=0, x1=W, seed=6)
         islands(ctx, 332, '#86aec8', seed=12, x0=-200 - camx * 0.05)
+        fx.sparkles(ctx, t, 0, W, 345, 700, n=30, seed=24, size=9)
         ctx.save()
         cam(ctx, camx, camy)
         k0 = self.st.idx(camx - W)
@@ -446,8 +523,19 @@ class S04:
         reach = (ox, oy, 0.55 * seg(t, 0.8, 1.4))
         draw_person(ctx, 'haru', hx, hy + 2, s=1.3, facing=1, phase=ph, stride=1.6, reach=reach,
                     mouth=max(talk('haru', tg), 0.25), eyes='open')
-        draw_orange(ctx, ox, oy, self.r, rot)
+        # 足もとの土けむり
+        step_ph = (ph / math.pi) % 1.0
+        fx.dust(ctx, hx - 20, hy, step_ph * 0.3, 0.45, seed=int(ph / math.pi), n=4, life=0.3)
+        gy = self.st.top(ox)
+        ground_shadow(ctx, ox, gy + 4, self.r * (1.7 - clamp((gy - self.r - oy) / 260) * 1.0), alpha=0.32)
+        for i, (h, v) in enumerate(self.hl):
+            _, px, py, _ = sample_path(self.path, h)
+            fx.dust(ctx, px, py + self.r, t - h, 0.8 + v, seed=i)
+            fx.impact(ctx, px, py + self.r, t - h, 50 + 50 * v)
+        draw_orange(ctx, ox, oy, self.r, rot, squash=squash_at(self.hl, t))
         ctx.restore()
+        fx.speed_lines(ctx, t, speed=2400, alpha=0.2, seed=41, n=18)
+        self.fg.draw(ctx, t * 5, direction=-1, alpha=0.9, scale=2.0)
         grade(ctx, '#ffe2b0', 0.2)
         vignette(ctx)
 
@@ -457,6 +545,7 @@ class S04:
 
 class S05:
     start, dur = 20.0, 6.0
+    SUB = 2
     CATX = 830
     HSTART = 2.3
 
@@ -467,6 +556,7 @@ class S05:
         self.path, hits = bounce_path(self.st.top, -60, self.st.top(-60) - 26, 400, self.dur, self.r,
                                       g=2600, rest=0.35)
         self.hits = [(self.start + h, v * 0.7) for h, v in hits]
+        self.hl = hits
         self.tcat = next(p[0] for p in self.path if p[1] > self.CATX - 80)
         self.houses = []
         x = -60
@@ -481,10 +571,12 @@ class S05:
 
     def draw(self, ctx, t):
         tg = self.start + t
+        set_light(side=1)
         sky(ctx, [(0, '#8fcaee'), (1, '#f2f8fc')], 0, 420)
         self.clouds.draw(ctx, t)
         sea(ctx, 250, 420, '#6db3dc', '#4a95c8', t, seed=8)
         islands(ctx, 252, '#8fb3cb', seed=21)
+        fx.sparkles(ctx, t, 0, W, 262, 415, n=24, seed=25, size=8)
         for x, base, w, h, sd, wall, roof in self.houses:
             house(ctx, x, base, w, h, wall=wall, roof=roof, seed=sd, lw=3.5)
         # 塀（段ごと）
@@ -501,6 +593,7 @@ class S05:
         pose = seg(ct, 0, 0.15) * (1 - 0.4 * seg(ct, 0.6, 1.0)) if ct > 0 else 0
         cy = self.st.top(self.CATX) - 118
         cat(ctx, self.CATX, cy - jump, 1.25, pose=pose, eyes='open' if ct > 0 else 'closed', facing=1 if ct < 0.5 else -1)
+        fx.pop_mark(ctx, self.CATX + 70, cy - 150, ct, '!', size=110, life=0.9)
         # 石段
         for k in range(-1, 18):
             x = self.st.x0 + k * self.st.sw
@@ -533,9 +626,20 @@ class S05:
             hy = self.st.smooth_top(hx)
             draw_person(ctx, 'haru', hx, hy + 2, s=1.4, facing=1, phase=hx * 0.032, stride=1.6, mouth=0.3)
         _, ox, oy, rot = sample_path(self.path, t)
-        draw_orange(ctx, ox, oy, self.r, rot)
+        gy = self.st.top(ox)
+        ground_shadow(ctx, ox, gy + 3, self.r * (1.6 - clamp((gy - self.r - oy) / 200) * 0.9), alpha=0.3)
+        for i, (h, v) in enumerate(self.hl):
+            _, px, py, _ = sample_path(self.path, h)
+            fx.dust(ctx, px, py + self.r, t - h, 0.5 + v, seed=i, n=5)
+            fx.impact(ctx, px, py + self.r, t - h, 36 + 40 * v)
+        draw_orange(ctx, ox, oy, self.r, rot, squash=squash_at(self.hl, t, 0.25))
+        fx.god_rays(ctx, t, x=1900, y=-300, alpha=0.07, n=5)
         grade(ctx, '#ffe2b0', 0.18)
         vignette(ctx)
+        # みかん色のワイプで次のカットへ
+        wp = seg(t, self.dur - 0.55, self.dur - 0.05)
+        if wp > 0:
+            fx.iris_cover(ctx, W + 80, 940, wp * 2500)
 
 
 # ================================================================= 港の背景（S06/S07 共通）
@@ -590,9 +694,11 @@ class S06:
         return 1013 - 14 * math.sin(math.pi * clamp((t - self.STOP) / 0.35))
 
     def draw(self, ctx, t):
+        set_light(side=-1, rim='#ffd9a0', rim_strength=0.3, shadow='#5a3f7a')
         ctx.save()
-        cam(ctx, 930, 720, 1.4)
+        cam(ctx, 930, 720, 1.4 + 0.04 * smooth(t / self.dur))
         self.bg.draw(ctx, t, horizon=520, quay=800, warm=0.35)
+        fx.sparkles(ctx, t, 200, 1700, 530, 790, n=34, seed=26, size=8)
         gull(ctx, 200 + t * 70, 200, 1.1, t, 0.3)
         gull(ctx, 120 + t * 64, 250, 0.9, t, 1.9)
         # ボラード
@@ -638,9 +744,14 @@ class S06:
                             eyes='happy' if happy else ('open' if t > 1.6 else blink(t)),
                             mouth=0.0, nod=-6 * seg(t, 1.8, 2.1) + 6 * seg(t, 3.0, 3.4))
         self._after(ctx, t, hands, mend, picked, ox, oy)
+        fx.pop_mark(ctx, 1215, 600, t - self.STOP - 0.15, '?', size=80, color='#3f7fc4', life=0.9)
+        if picked and 'front' in hands:
+            fx.twinkle(ctx, hands['front'][0] - 10, hands['front'][1] - 40, t - 3.6, size=60)
         ctx.restore()
         grade(ctx, '#ffcf99', 0.3)
         vignette(ctx)
+        if t < 0.7:
+            fx.iris_hole(ctx, -80, 940, seg(t, 0.03, 0.65) * 2500)
 
     def _after(self, ctx, t, hands, mend, picked, ox, oy):
         # 網糸
@@ -650,6 +761,9 @@ class S06:
         ctx.curve_to(1200, 960, 1260, 960, 1300, 950)
         ctx.stroke()
         if not picked:
+            ground_shadow(ctx, ox, self.FLOOR + 2, self.r * 1.6, alpha=0.3)
+            fx.dust(ctx, ox + 20, self.FLOOR, t - self.STOP, 0.5, seed=6, n=4)
+            fx.impact(ctx, ox + 22, oy, t - self.STOP, 40)
             draw_orange(ctx, ox, oy, self.r, ox / self.r)
 
 
@@ -665,20 +779,25 @@ class S07:
 
     def draw(self, ctx, t):
         tg = self.start + t
+        set_light(side=-1, rim='#ffd08a', rim_strength=0.36, shadow='#5a3f7a')
+
+        def bg(c):
+            c.translate(W / 2, H / 2)
+            c.scale(1.25, 1.25)
+            c.translate(-W / 2, -H / 2 - 60)
+            self.bg.draw(c, t, horizon=470, quay=880, warm=0.5)
+        fx.blurred(ctx, bg, factor=4, radius=2.0)
+        fx.sparkles(ctx, t, 0, W, 545, 880, n=26, seed=27, size=18, alpha=0.75)
         ctx.save()
-        ctx.translate(W / 2, H / 2)
-        ctx.scale(1.25, 1.25)
-        ctx.translate(-W / 2, -H / 2 - 60)
-        self.bg.draw(ctx, t, horizon=470, quay=880, warm=0.5)
-        ctx.restore()
+        cam(ctx, 960, 580, 1.0 + 0.06 * smooth(t / self.dur))
         pant = (1 - seg(t, 0.6, 2.2))
         hbob = math.sin(t * 9) * 7 * pant
         # 漁師
         ext = seg(t, 0.7, 1.7)
         back = seg(t, 2.6, 3.4)
-        fx = (lerp(780, 945, ext) if t < self.GIVE else lerp(945, 700, back))
-        fy = (lerp(650, 610, ext) if t < self.GIVE else lerp(610, 760, back))
-        draw_person(ctx, 'ryoshi', 640, 1060, s=2.2, facing=1, reach=(fx, fy, 1 - back if t > self.GIVE else 1.0),
+        gx = (lerp(780, 945, ext) if t < self.GIVE else lerp(945, 700, back))
+        gy = (lerp(650, 610, ext) if t < self.GIVE else lerp(610, 760, back))
+        draw_person(ctx, 'ryoshi', 640, 1060, s=2.2, facing=1, reach=(gx, gy, 1 - back if t > self.GIVE else 1.0),
                     hold=orange_fn(30, 0.6) if t < self.GIVE else None, mouth=talk('ryoshi', tg),
                     eyes='happy' if t > 3.2 else blink(t, 3), lean=4 * ext * (1 - back))
         # ハル
@@ -693,6 +812,9 @@ class S07:
                     reach_back=(tx + 20, ty + 15, w), hold=hold, lean=12 * pant,
                     mouth=0.45 * pant * abs(math.sin(t * 9)) + (0 if t < 3.3 else 0.0),
                     eyes='happy' if t > 3.4 else 'open')
+        fx.twinkle(ctx, 975, 590, t - self.GIVE + 0.1, size=80)
+        ctx.restore()
+        fx.god_rays(ctx, t, x=-150, y=-200, alpha=0.035, spread=(0.4, 1.25), color='#ffd9a0')
         grade(ctx, '#ffc28a', 0.3)
         vignette(ctx)
 
@@ -720,8 +842,9 @@ class S08:
 
     def draw(self, ctx, t):
         tg = self.start + t
+        set_light(side=-1, rim='#ffcf8a', rim_strength=0.32, shadow='#5a3f7a')
         ctx.save()
-        cam(ctx, 960, 600, 1.13)
+        cam(ctx, 960, 600, 1.13 + 0.05 * smooth(t / self.dur))
         sky(ctx, [(0, '#9cc3e4'), (0.6, '#f7d6ae'), (1, '#ffcf9a')], 0, 560)
         self.clouds.draw(ctx, t, color='#fff1e0')
         # 奥の山と段々畑
@@ -763,6 +886,7 @@ class S08:
         setc(ctx, '#e6e0d5')
         ctx.fill()
         sea(ctx, self.SEAT + 130, H + 120, '#5d86a8', '#35597d', t, line_color='#ffe2bd', line_alpha=0.3, seed=12)
+        fx.sparkles(ctx, t, 0, W, self.SEAT + 140, H + 60, n=30, seed=28, size=12, color='#ffe9c4')
 
         # じいちゃん: 右から歩いてくる → 正面で笑う
         arrive = 2.6
@@ -802,6 +926,8 @@ class S08:
         lx, ly = lerp(lx, give_pt[0] + 10, offer), lerp(chest[1], give_pt[1], offer)
         rx = lerp(chest[0] + 12, chest[0] + 60, split)
         rx, ry = lerp(rx, haru_cx + 10, eat), lerp(chest[1], 552, eat)
+        raise_ = seg(t, 5.7, 6.3)   # 最後にみかんを夕日にかざす
+        rx, ry = lerp(rx, haru_cx + 95, raise_), lerp(ry, 455, raise_)
         if split < 0.05:
             # まるごと（両手で持つ）
             left_hold = orange_fn(34, 0, peeled=True)
@@ -810,14 +936,30 @@ class S08:
             left_hold = half_fn(26, -0.3) if t < self.GIVE else None
             right_hold = half_fn(26, 0.3)
         laugh_h = seg(t, 4.4, 4.7)
-        draw_person(ctx, 'haru', haru_cx, self.SEAT, s=1.9, view='front', sit=True,
+        hh = draw_person(ctx, 'haru', haru_cx, self.SEAT, s=1.9, view='front', sit=True,
                     legs=[(0, -6 + math.sin(t * 2.5) * 10), (0, 6 + math.sin(t * 2.5 + 1.5) * 10)],
                     reach=(rx, ry), reach_back=(lx, ly), hold=right_hold, hold_back=left_hold,
                     mouth=max(talk('haru', tg), 0.4 * laugh_h * abs(math.sin(t * 7)), 0.5 if 3.7 < t < 4.2 else 0),
                     eyes='happy' if laugh_h > 0 else blink(t, 5), bob=-abs(math.sin(t * 7)) * 4 * laugh_h)
+        # みかんを割ったときの果汁のしぶき
+        ja = t - 0.95
+        if 0 <= ja < 0.5:
+            rng = random.Random(8)
+            for _ in range(8):
+                a, v = rng.uniform(math.pi * 1.15, math.pi * 1.85), rng.uniform(160, 330)
+                px = haru_cx + math.cos(a) * v * ja
+                py = 630 + math.sin(a) * v * ja + 500 * ja * ja
+                ellipse(ctx, px, py, 5, 7)
+                setc(ctx, '#ffb347', 1 - ja / 0.5)
+                ctx.fill()
+        self.iris = ctx.user_to_device(hh['front'][0], hh['front'][1] - 20)
         ctx.restore()
         grade(ctx, '#ffbf80', 0.33)
         vignette(ctx)
+        # かざしたみかんが画面いっぱいに広がる → 次のカットで夕日になる
+        wp = (clamp((t - 6.3) / 0.65)) ** 2.2
+        if wp > 0:
+            fx.iris_cover(ctx, self.iris[0], self.iris[1], 26 + wp * 2500)
 
 
 # ================================================================= S09 みかん色の夕日
@@ -829,9 +971,11 @@ class S09:
 
     def __init__(self):
         rng = random.Random(99)
+        self.leaves = fx.Leaves(109, n=6, colors=('#3a2338', '#5a3a50'))
         self.refl = [(rng.uniform(-1, 1), self.HZ + 8 + i * 9 + rng.uniform(-3, 3), rng.uniform(0, 6.28)) for i in range(36)]
 
     def draw(self, ctx, t):
+        set_light()
         z = lerp(1.12, 1.0, smooth(t / self.dur))
         ctx.save()
         cam(ctx, 960, 620, z)
@@ -868,6 +1012,8 @@ class S09:
             ctx.move_to(x - w, y)
             ctx.line_to(x + w, y)
             ctx.stroke()
+        fx.sparkles(ctx, t, 640, 1280, self.HZ + 10, 870, n=34, seed=29, size=11, color='#fff0c0', period=3.2)
+        sun_dev = ctx.user_to_device(960, sy)
         with silhouette('#3a2338'):
             boat(ctx, 360, self.HZ + 40, 0.6, t, 0.4)
             boat(ctx, 1600, self.HZ + 55, 0.5, t, 2.0)
@@ -883,7 +1029,23 @@ class S09:
                         bob=-abs(math.sin(t * 1.6)) * 3)
             draw_person(ctx, 'ryoshi', 1170, 885, s=1.5, view='back', sit=True, arms=(-12, -8, 12, 8))
         ctx.restore()
+        fx.god_rays(ctx, t, x=sun_dev[0], y=sun_dev[1], n=14, alpha=0.05, spread=(math.pi, 2 * math.pi),
+                    length=1500, color='#ffd9a0', seed=9)
+        self.leaves.draw(ctx, t, direction=1, alpha=0.5)
         vignette(ctx, 0.3)
+        # みかん → 夕日（前のカットのみかん色の円が縮んで太陽になる）
+        u = clamp(t / 1.5)
+        if u < 1:
+            k = (1 - u) ** 3
+            r = 105 * z + (2500 - 105 * z) * k
+            cx, cy = lerp(sun_dev[0], 1070, k), lerp(sun_dev[1], 400, k)
+            col = mixc(ORANGE, '#fff1c2', u ** 2)
+            g = cairo.RadialGradient(cx, cy, r * 0.2, cx, cy, r)
+            g.add_color_stop_rgb(0, *mixc('#ffc766', '#fff8dc', u ** 2))
+            g.add_color_stop_rgb(1, *col)
+            ctx.set_source(g)
+            ctx.arc(cx, cy, r, 0, 2 * math.pi)
+            ctx.fill()
 
 
 # ================================================================= S10 タイトル背景
@@ -895,6 +1057,12 @@ class S10:
 
     def __init__(self):
         self.clouds = Clouds(10, 5, 120, 520, 60, 110)
+        self.prev = S09()
+        self.title = fx.Title(t0=1.2)
+
+    def chimes(self):
+        """効果音用: タイトルの文字が出る時刻（全体タイムライン）"""
+        return [self.start + x for x in self.title.pop_times()]
 
     def draw(self, ctx, t):
         sky(ctx, [(0, '#1f2d5c'), (0.45, '#5d4f8f'), (0.8, '#e88a6a'), (1, '#ffb070')], 0, self.HZ)
@@ -906,7 +1074,15 @@ class S10:
         ctx.rectangle(0, self.HZ, W, H - self.HZ)
         ctx.fill()
         islands(ctx, self.HZ + 1, '#4a3558', seed=51)
+        fx.sparkles(ctx, t, 0, W, 20, 430, n=50, seed=30, size=6, alpha=0.85 * seg(t, 0.6, 3.0), period=4.5)
         vignette(ctx, 0.3)
+        d = 1 - seg(t, 0.0, 1.3)
+        if d > 0:   # 前のカット（夕日）からゆっくり溶けこむ
+            ctx.push_group()
+            self.prev.draw(ctx, S09.dur + t)
+            ctx.pop_group_to_source()
+            ctx.paint_with_alpha(d)
+        self.title.draw(ctx, t, draw_orange)
         f = seg(t, 7.5, 8.0)
         if f > 0:
             ctx.set_source_rgba(0, 0, 0, f)

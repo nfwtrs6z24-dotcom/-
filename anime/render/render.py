@@ -12,6 +12,7 @@ from multiprocessing import Pool
 import cairo
 
 from common import W, H
+import post
 import scenes
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -29,12 +30,8 @@ def render(name):
     surf = cairo.ImageSurface(cairo.FORMAT_RGB24, W, H)
     t0 = time.time()
     for i in range(n):
-        ctx = cairo.Context(surf)
-        ctx.set_source_rgb(0, 0, 0)
-        ctx.paint()
-        shot.draw(ctx, i * 1001 / 30000)
-        surf.flush()
-        p.stdin.write(bytes(surf.get_data()))
+        frame = post.render_frame(shot, surf, cairo, i * 1001 / 30000, 1001 / 30000, i, name)
+        p.stdin.write(frame.tobytes())
     p.stdin.close()
     p.wait()
     return f'{name}: {n} frames, {time.time() - t0:.0f}s'

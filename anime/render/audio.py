@@ -43,6 +43,20 @@ def highpass(x, fc):
     return x - lowpass(x, fc)
 
 
+def reverb(x, decay=1.8, seed=1, pre=0.012):
+    """ノイズを減衰させたインパルス応答をたたみ込む簡易リバーブ（ウェット成分だけ返す）"""
+    n = int(decay * SR)
+    rng = np.random.default_rng(seed)
+    t = np.arange(n) / SR
+    ir = rng.normal(0, 1, n) * np.exp(-t * 6.9 / decay)
+    ir = lowpass(ir, 6000)
+    ir[:int(pre * SR)] = 0
+    ir /= np.sqrt(np.sum(ir ** 2)) + 1e-9
+    m = len(x) + n
+    y = np.fft.irfft(np.fft.rfft(x, m) * np.fft.rfft(ir, m), m)
+    return y[:len(x)]
+
+
 def place(buf, sig, t, gain=1.0):
     i = int(t * SR)
     if i >= len(buf):
@@ -60,25 +74,38 @@ def mtof(m):
 
 # ---------------------------------------------------------------- 声（仮ボイス）
 
+VOICES = os.path.join(HERE, '..', 'voices')
 LINES = [
-    # who, 開始秒, テキスト, half_tone, speed
-    ('na', 1.0, '海と山のあいだの町、八幡浜。', 0.0, 0.92),
-    ('haru', 7.0, '見て！ こんなに大きいよ！', 6.0, 1.05),
-    ('haru', 10.85, 'あっ！', 6.0, 1.0),
-    ('haru', 15.0, 'まってー！', 6.0, 1.0),
-    ('ryoshi', 32.0, 'ええみかんじゃねえ。', -2.0, 0.9),
-    ('haru', 37.6, 'はんぶんこ、しよ。', 6.0, 1.0),
-    ('na', 45.2, 'ころがった先で、だれかと、つながる。', 0.0, 0.85),
+    # who, 開始秒, テキスト, 声, half_tone, speed
+    ('na', 1.0, '海と山のあいだの町、八幡浜。', 'mei_normal', -1.0, 0.92),
+    ('haru', 7.0, '見て！ こんなに大きいよ！', 'mei_happy', 3.0, 1.08),
+    ('haru', 10.85, 'ああっ！', 'mei_happy', 3.5, 0.85),
+    ('haru', 15.0, 'まってー！', 'mei_happy', 3.5, 0.95),
+    ('ryoshi', 32.0, 'ええみかんじゃねえ。', None, -3.0, 0.9),
+    ('haru', 37.6, 'はんぶんこ、しよ。', 'mei_happy', 3.0, 1.0),
+    ('na', 45.2, 'ころがった先で、だれかと、つながる。', 'mei_normal', -1.0, 0.85),
 ]
 
 
-def make_voice():
+def synth(text, voice, half_tone, speed):
+    """Open JTalk で合成。voice=None は標準の男性の声、それ以外は voices/ の HTS ボイス"""
     import pyopenjtalk
+    if voice is None:
+        x, sr = pyopenjtalk.tts(text, speed=speed, half_tone=half_tone)
+        return np.asarray(x, dtype=np.float64), sr
+    eng = pyopenjtalk.HTSEngine(os.path.join(VOICES, voice + '.htsvoice').encode())
+    eng.set_speed(speed)
+    eng.add_half_tone(half_tone)
+    x = eng.synthesize(pyopenjtalk.extract_fullcontext(text))
+    return np.asarray(x, dtype=np.float64), eng.get_sampling_frequency()
+
+
+def make_voice():
     buf = np.zeros(N)
     timing = []
-    for who, start, text, ht, sp in LINES:
-        x, sr = pyopenjtalk.tts(text, speed=sp, half_tone=ht)
-        x = np.asarray(x, dtype=np.float64) / 32768.0
+    for who, start, text, vo, ht, sp in LINES:
+        x, sr = synth(text, vo, ht, sp)
+        x = x / 32768.0
         if sr != SR:
             idx = np.arange(0, len(x), sr / SR)
             x = np.interp(idx, np.arange(len(x)), x)
@@ -92,6 +119,7 @@ def make_voice():
         place(buf, x, start)
         timing.append(dict(who=who, start=start, dur=round(len(x) / SR - 0.05, 3), text=text))
         print(f'  voice {who:6s} {start:5.2f}s +{len(x) / SR:4.2f}s  {text}')
+    buf = buf + 0.12 * reverb(buf, 0.5, seed=5)      # ほんの少し部屋の響き
     write_wav(os.path.join(OUT, 'voice.wav'), buf)
     with open(os.path.join(HERE, 'voice_timing.json'), 'w') as f:
         json.dump(dict(lines=timing), f, ensure_ascii=False, indent=1)
@@ -173,6 +201,45 @@ def bass(f, dur, vel=0.5):
     return x * env * vel
 
 
+def pad(f, dur, vel=0.1):
+    """ゆっくり立ち上がるストリングス風の音"""
+    n = int((dur + 1.2) * SR)
+    t = np.arange(n) / SR
+    x = np.zeros(n)
+    for det in (-0.004, 0.0, 0.004):
+        for k in range(1, 7):
+            x += np.sin(2 * np.pi * f * (1 + det) * k * t + k * det * 900) / k ** 1.6
+    vib = 1 + 0.004 * np.sin(2 * np.pi * 5 * t)
+    env = np.minimum(1, t / 0.5) * np.where(t < dur, 1.0, np.exp(-(t - dur) * 3))
+    return lowpass(x * vib, 2600) * env * vel / 3
+
+
+def bell(f, vel=0.3, decay=3.0):
+    """グロッケン風のきらっとした音"""
+    n = int(2.0 * SR)
+    t = np.arange(n) / SR
+    x = np.sin(2 * np.pi * f * t) + 0.5 * np.sin(2 * np.pi * f * 2.76 * t) * np.exp(-t * 6) \
+        + 0.25 * np.sin(2 * np.pi * f * 5.4 * t) * np.exp(-t * 12)
+    return x * np.exp(-t * decay) * np.minimum(1, t / 0.002) * vel
+
+
+def whoosh(dur=0.7, f0=400, f1=3000, vel=0.5, seed=0):
+    """場面転換の風切り音"""
+    n = int(dur * SR)
+    rng = np.random.default_rng(seed)
+    x = rng.uniform(-1, 1, n)
+    t = np.arange(n) / SR
+    out = np.zeros(n)
+    nb = 24
+    for i in range(nb):       # 帯域を時間とともに上げていく
+        a, b = i * n // nb, (i + 1) * n // nb
+        fc = f0 * (f1 / f0) ** (i / (nb - 1))
+        seg_ = lowpass(x, fc * 1.6) - lowpass(x, fc * 0.6)
+        out[a:b] = seg_[a:b]
+    env = np.sin(np.pi * t / dur) ** 2
+    return out * env * vel
+
+
 def shaker(vel=0.15, seed=0):
     n = int(0.09 * SR)
     rng = np.random.default_rng(seed)
@@ -210,6 +277,11 @@ def make_bgm(duck_from=None):
         if sec in ('intro', 'harbor', 'sunset', 'end'):
             for m in tones[1:4]:
                 put(piano(mtof(m + 12 if sec == 'sunset' else m), BAR * (2 if sec == 'end' else 0.95), 0.10), t0, 1.0, 0.3)
+        # ストリングス（港から夕日にかけて厚くする）
+        if sec in ('harbor', 'sunset', 'end') or b >= 2 and sec == 'intro':
+            pv = {'intro': 0.05, 'harbor': 0.08, 'sunset': 0.13, 'end': 0.09}[sec]
+            for m in (tones[1], tones[2], tones[3] + (12 if sec == 'sunset' else 0)):
+                put(pad(mtof(m), BAR * (2.4 if (sec == 'end' and b == 17) else 1.0), pv), t0, 1.0 if sec != 'end' or b == 17 else 0.0, -0.1)
         # ベース
         if sec == 'chase':
             for k in range(4):
@@ -222,6 +294,9 @@ def make_bgm(duck_from=None):
         # メロディ
         for beat, m, d in MELODY.get(b, []):
             put(piano(mtof(m), d * BEAT * 0.95, 0.22 if sec != 'chase' else 0.2), t0 + beat * BEAT, 1.0, 0.1)
+    # 全体にホールの響きを足す
+    for ch in (0, 1):
+        L[:, ch] += 0.28 * reverb(L[:, ch], 2.2, seed=10 + ch)
     # フェードアウト
     t = np.arange(N) / SR
     L *= np.clip((59.6 - t) / 3.0, 0, 1)[:, None]
@@ -290,6 +365,22 @@ def make_se():
             if prev is not None and (prev < 0) != (s < 0):
                 place(se, step(i), cls.start + t, 0.35)
             prev = s
+    # 場面転換（みかん色のワイプ、みかん→夕日）
+    place(se, whoosh(0.9, 300, 2600, 0.5, 1), scenes.S05.start + scenes.S05.dur - 0.6, 1.0)
+    place(se, whoosh(1.6, 250, 3200, 0.45, 2), scenes.S08.start + 6.2, 1.0)
+    place(se, whoosh(0.5, 600, 3500, 0.35, 3), scenes.S03.start + scenes.S03.FACE + 1.2, 1.0)
+    # きらっ（みかんを掲げる／受け取る）
+    for tt, f in ((scenes.S02.start + 1.0, 2093), (scenes.S07.start + scenes.S07.GIVE, 1760), (scenes.S06.start + 3.6, 1568)):
+        place(se, bell(f, 0.22), tt, 1.0)
+        place(se, bell(f * 1.5, 0.15), tt + 0.09, 1.0)
+    # びっくり
+    place(se, bell(1318, 0.2, 8) + bell(1975, 0.15, 8), scenes.S03.start + scenes.S03.FACE + 0.05, 1.0)
+    # タイトルの文字が跳ねて出る音（音階をのぼる）
+    scale = [65, 69, 72, 74, 77, 81, 84, 86, 89]
+    for tt, m in zip(scenes.S10().chimes(), scale):
+        place(se, bell(mtof(m + 12), 0.2), tt, 1.0)
+    dry = se.copy()
+    se = dry + 0.35 * reverb(dry, 1.6, seed=20)
     t = np.arange(N) / SR
     # 風（朝）と波（港）
     wind = ambience(1, 400, 0.15, 0.6) * np.clip(1 - np.abs(t - 7) / 8, 0, 1) * 0.06
