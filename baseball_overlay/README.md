@@ -28,6 +28,7 @@
 | `gf_up.sh` | ギガファイル便へ100MBずつ分割アップロード（`gf_up.sh <file> 77.gigafile.nu 30`） |
 | `metric.py` / `redmetric.py` | 映像の色から攻守交代の時刻を推定する補助 |
 | `games/` | 2026年の試合ごとのデータ（スコア推移・打席時刻・相手打者・交代）。次回の入力例 |
+| `games/gC.py` | 2026-11-21 立花戦。パワプロ風（pop）一式を作る例：得点イベントと攻守交代から点数表示を自動生成 |
 | `fonts/` | Noto Sans JP / Noto Serif JP Black（SIL OFL 1.1、`fonts/OFL.txt`） |
 
 ## 使い方の流れ

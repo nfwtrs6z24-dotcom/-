@@ -57,7 +57,10 @@ def scoreboard(inning, half, away, home, out, AWAY="八幡浜", HOME="中田ジ�
         d.rounded_rectangle([X0 + IW + 6, ny0, X0 + IW + NW - 6, ny0 + RH - 24], radius=10, fill=WHITE)
         if bat:
             d.ellipse([X0 + IW + 14, y - 10, X0 + IW + 34, y + 10], fill=YEL, outline=INK, width=2)
-        d.text((X0 + IW + 44, y), n, font=nf, fill=INK, anchor="lm")
+        fs = 42
+        while ImageFont.truetype(SANS, fs).getlength(n) > NW - 62 and fs > 20:
+            fs -= 2
+        d.text((X0 + IW + 44, y), n, font=ImageFont.truetype(SANS, fs), fill=INK, anchor="lm")
         d.text((X0 + IW + NW + SW // 2 - 4, y + 2), str(s), font=sf, fill=YEL if bat else WHITE, anchor="mm", stroke_width=3, stroke_fill=INK)
     img.save(out)
 

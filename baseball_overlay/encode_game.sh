@@ -3,8 +3,10 @@
 set -e
 G=$1; OUT=$2; shift 2
 SRC="concat:$(IFS='|'; echo "$*")"
-args=(-i "$SRC" -itsoffset 1.0 -i $G/telop.mov)
-fc="[0:v]bwdif=1[v0];[v0][1:v]overlay=eof_action=pass[c0]"; prev=c0; n=2; k=0
+args=(-i "$SRC")
+if [ -f $G/telop.mov ]; then args+=(-itsoffset 1.0 -i $G/telop.mov)
+  fc="[0:v]bwdif=1[v0];[v0][1:v]overlay=eof_action=pass[c0]"; prev=c0; n=2
+else fc="[0:v]bwdif=1[c0]"; prev=c0; n=1; fi; k=0
 while read a b inn half aw hm; do k=$((k+1)); args+=(-i $G/sb/s$(printf %02d $k).png)
   fc+=";[$prev][$n:v]overlay=enable='between(t,$a,$b-0.001)'[c$n]"; prev=c$n; n=$((n+1)); done < $G/states.txt
 add_timed(){ args+=(-loop 1 -framerate 60000/1001 -t $3 -i $1)
